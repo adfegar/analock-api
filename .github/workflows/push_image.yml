@@ -1,8 +1,11 @@
 name: Build and Push Docker Image
 
 on:
-  push:
+  workflow_run:
+    workflows: ["Go"]
     branches: [main]
+    types:
+      - completed
 
 jobs:
   build-and-push:
