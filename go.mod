@@ -1,6 +1,6 @@
 module github.com/adfer-dev/analock-api
 
-go 1.23.2
+go 1.23
 
 require (
 	github.com/antlr4-go/antlr/v4 v4.13.0 // indirect
