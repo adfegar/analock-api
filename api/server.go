@@ -37,4 +37,5 @@ func (server *APIServer) initRoutes() {
 	handlers.InitUserRoutes(server.router)
 	handlers.InitAuthRoutes(server.router)
 	handlers.InitDiaryEntryRoutes(server.router)
+	handlers.InitActivityRegistrationRoutes(server.router)
 }
