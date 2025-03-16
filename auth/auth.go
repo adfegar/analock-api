@@ -1,14 +1,15 @@
 package auth
 
 import (
+	"crypto/rand"
 	"errors"
-	"os"
 	"time"
 
 	"github.com/adfer-dev/analock-api/models"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/joho/godotenv"
 )
+
+var secretKey []byte
 
 // GenerateToken generates and returns a new token of the selected kind.
 // The possible token kinds are:
@@ -96,11 +97,14 @@ func GetClaims(tokenString string) (jwt.MapClaims, error) {
 // getSecretKey returns the SECRET_KEY env variable.
 // It returns error if the variable could not be loaded.
 func getSecretKey() ([]byte, error) {
-	envErr := godotenv.Load()
+	if secretKey == nil {
+		secretKey = make([]byte, 32)
+		_, err := rand.Read(secretKey)
 
-	if envErr != nil {
-		return []byte{}, envErr
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	return []byte(os.Getenv("SECRET_KEY")), nil
+	return secretKey, nil
 }

@@ -5,13 +5,11 @@ import (
 	"github.com/adfer-dev/analock-api/storage"
 )
 
-var diaryEntryStorage = &storage.DiaryEntryStorage{}
-
 type SaveDiaryEntryBody struct {
 	Title       string `json:"title" validate:"required"`
 	Content     string `json:"content" validate:"required"`
 	PublishDate int64  `json:"publishDate" validate:"required"`
-	UserRefer   uint   `json:"user_id" validate:"required"`
+	UserRefer   uint   `json:"userId" validate:"required"`
 }
 
 type UpdateDiaryEntryBody struct {
@@ -19,6 +17,9 @@ type UpdateDiaryEntryBody struct {
 	Content     string `json:"content" validate:"required"`
 	PublishDate int64  `json:"publishDate" validate:"required"`
 }
+
+var diaryEntryStorage = &storage.DiaryEntryStorage{}
+var activityRegistrationStorage = &storage.ActivityRegistrationStorage{}
 
 func GetDiaryEntryById(id uint) (*models.DiaryEntry, error) {
 	diaryEntry, err := diaryEntryStorage.Get(id)
@@ -41,11 +42,21 @@ func GetUserEntries(userId uint) ([]*models.DiaryEntry, error) {
 }
 
 func SaveDiaryEntry(diaryEntryBody *SaveDiaryEntryBody) (*models.DiaryEntry, error) {
+	dbActivityRegistration := &models.ActivityRegistration{
+		RegistrationDate: diaryEntryBody.PublishDate,
+		UserRefer:        diaryEntryBody.UserRefer,
+	}
+
+	saveRegistrationErr := activityRegistrationStorage.Create(dbActivityRegistration)
+
+	if saveRegistrationErr != nil {
+		return nil, saveRegistrationErr
+	}
+
 	dbEntry := &models.DiaryEntry{
-		Title:     diaryEntryBody.Title,
-		Content:   diaryEntryBody.Content,
-		Date:      diaryEntryBody.PublishDate,
-		UserRefer: diaryEntryBody.UserRefer,
+		Title:        diaryEntryBody.Title,
+		Content:      diaryEntryBody.Content,
+		Registration: *dbActivityRegistration,
 	}
 	err := diaryEntryStorage.Create(dbEntry)
 
@@ -57,11 +68,20 @@ func SaveDiaryEntry(diaryEntryBody *SaveDiaryEntryBody) (*models.DiaryEntry, err
 }
 
 func UpdateDiaryEntry(diaryEntryId uint, diaryEntryBody *UpdateDiaryEntryBody) (*models.DiaryEntry, error) {
+	dbRegistration := &models.ActivityRegistration{
+		RegistrationDate: diaryEntryBody.PublishDate,
+	}
+
+	updateRegistrationErr := activityRegistrationStorage.Update(dbRegistration)
+
+	if updateRegistrationErr != nil {
+		return nil, updateRegistrationErr
+	}
+
 	dbEntry := &models.DiaryEntry{
 		Id:      diaryEntryId,
 		Title:   diaryEntryBody.Title,
 		Content: diaryEntryBody.Content,
-		Date:    diaryEntryBody.PublishDate,
 	}
 	err := diaryEntryStorage.Update(dbEntry)
 
@@ -73,5 +93,11 @@ func UpdateDiaryEntry(diaryEntryId uint, diaryEntryBody *UpdateDiaryEntryBody) (
 }
 
 func DeleteDiaryEntry(id uint) error {
-	return diaryEntryStorage.Delete(id)
+	diaryEntry, err := GetDiaryEntryById(id)
+
+	if err != nil {
+		return err
+	}
+
+	return activityRegistrationStorage.Delete(diaryEntry.Registration.Id)
 }

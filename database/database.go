@@ -20,10 +20,29 @@ const (
 		" PRIMARY KEY (`id`), UNIQUE (`provider_client_id`)," +
 		" CONSTRAINT `fk_users_external_login` FOREIGN KEY (`user_id`)" +
 		" REFERENCES `user` (`id`) ON DELETE CASCADE ON UPDATE CASCADE);"
-	createDiaryEntryTableQuery = "CREATE TABLE IF NOT EXISTS `diary_entry` (`id` integer, `title` text, `content` text, `publishDate` integer, `user_id` text," +
+	createDiaryEntryTableQuery = "CREATE TABLE IF NOT EXISTS `diary_entry` (`id` integer, `title` text, `content` text, `registration_id` integer," +
 		" PRIMARY KEY (`id`)," +
-		"CONSTRAINT `fk_users_activity_entry` FOREIGN KEY (`user_id`)" +
-		" REFERENCES `user` (`id`) ON DELETE CASCADE ON UPDATE CASCADE);"
+		" UNIQUE (`id`, `registration_id`)," +
+		" CONSTRAINT `fk_activity_registration_diary_entry` FOREIGN KEY (`registration_id`)" +
+		" REFERENCES `activity_registration` (`id`) ON DELETE CASCADE ON UPDATE CASCADE);"
+	createActivityRegistrationTableQuery = "CREATE TABLE IF NOT EXISTS `activity_registration` (" +
+		"`id` integer PRIMARY KEY, " +
+		"`registration_date` integer, " +
+		"`user_id` integer, " +
+		"CONSTRAINT `fk_activity_registration_user` FOREIGN KEY (`user_id`) " +
+		"REFERENCES `user` (`id`) ON DELETE CASCADE ON UPDATE CASCADE);"
+	createActivityRegistrationBookTableQuery = "CREATE TABLE IF NOT EXISTS `activity_registration_book` (" +
+		"`id` integer PRIMARY KEY, " +
+		"`registration_id` integer, " +
+		"`internet_archive_id` text, " +
+		"CONSTRAINT `fk_activity_registration` FOREIGN KEY (`registration_id`) " +
+		"REFERENCES `activity_registration` (`id`) ON DELETE CASCADE ON UPDATE CASCADE);"
+	createActivityRegistrationGameTableQuery = "CREATE TABLE IF NOT EXISTS `activity_registration_game` (" +
+		"`id` integer PRIMARY KEY, " +
+		"`registration_id` integer, " +
+		"`game_name` text, " +
+		"CONSTRAINT `fk_activity_registration` FOREIGN KEY (`registration_id`) " +
+		"REFERENCES `activity_registration` (`id`) ON DELETE CASCADE ON UPDATE CASCADE);"
 )
 
 type Database struct {
@@ -65,7 +84,10 @@ func initDatabase() {
 	createTableQueryMap["user"] = createUsersTableQuery
 	createTableQueryMap["token"] = createTokensTableQuery
 	createTableQueryMap["external_login"] = createExternalLoginTableQuery
-	createTableQueryMap["activity_entry"] = createDiaryEntryTableQuery
+	createTableQueryMap["diary_entry"] = createDiaryEntryTableQuery
+	createTableQueryMap["activity_registration"] = createActivityRegistrationTableQuery
+	createTableQueryMap["activity_registration_book"] = createActivityRegistrationBookTableQuery
+	createTableQueryMap["activity_registration_game"] = createActivityRegistrationGameTableQuery
 
 	for tableName, query := range createTableQueryMap {
 		_, createTableErr := connectionInstance.GetConnection().Exec(query)

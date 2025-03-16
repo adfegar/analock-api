@@ -7,11 +7,11 @@ import (
 )
 
 const (
-	getDiaryEntryQuery       = "SELECT * FROM diary_entry where id = ?;"
-	getUserDiaryEntriesQuery = "SELECT * FROM diary_entry where user_id = ?;"
-	insertDiaryEntryQuery    = "INSERT INTO diary_entry (title, content, publishDate, user_id) VALUES (?, ?, ?, ?);"
-	updateDiaryEntryQuery    = "UPDATE diary_entry SET title = ?, content = ?, publishDate = ? WHERE id = ?;"
-	deleteDiaryEntryQuery    = "DELETE FROM diary_entry WHERE id = ?;"
+	getDiaryEntryByIdentifierQuery = "SELECT de.id, de.title, de.content, ar.registration_date, ar.user_id FROM diary_entry de INNER JOIN activity_registration ar ON (de.id = ar.id) WHERE de.id = ?;"
+	getUserDiaryEntriesQuery       = "SELECT de.id, de.title, de.content, ar.registration_date, ar.user_id FROM diary_entry de INNER JOIN activity_registration ar ON (de.id = ar.id) WHERE ar.user_id = ?;"
+	insertDiaryEntryQuery          = "INSERT INTO diary_entry (title, content, registration_id) VALUES (?, ?, ?);"
+	updateDiaryEntryQuery          = "UPDATE diary_entry SET title = ?, content = ? WHERE id = ?;"
+	deleteDiaryEntryQuery          = "DELETE FROM diary_entry WHERE id = ?;"
 )
 
 type DiaryEntryStorage struct{}
@@ -20,7 +20,7 @@ var diaryEntryNotFoundError = &models.DbNotFoundError{DbItem: &models.DiaryEntry
 var failedToParseDiaryEntryError = &models.DbCouldNotParseItemError{DbItem: &models.DiaryEntry{}}
 
 func (diaryEntryStorage *DiaryEntryStorage) Get(id uint) (interface{}, error) {
-	result, err := databaseConnection.Query(getDiaryEntryQuery, id)
+	result, err := databaseConnection.Query(getDiaryEntryByIdentifierQuery, id)
 
 	if err != nil {
 		return nil, err
@@ -79,14 +79,13 @@ func (diaryEntryStorage *DiaryEntryStorage) Create(diaryEntry interface{}) error
 	dbDiaryEntry, ok := diaryEntry.(*models.DiaryEntry)
 
 	if !ok {
-		return failedToParseUserError
+		return failedToParseDiaryEntryError
 	}
 
 	result, err := databaseConnection.Exec(insertDiaryEntryQuery,
 		dbDiaryEntry.Title,
 		dbDiaryEntry.Content,
-		dbDiaryEntry.Date,
-		dbDiaryEntry.UserRefer)
+		dbDiaryEntry.Registration.Id)
 
 	if err != nil {
 		return err
@@ -106,13 +105,12 @@ func (diaryEntryStorage *DiaryEntryStorage) Update(diaryEntry interface{}) error
 	dbDiaryEntry, ok := diaryEntry.(*models.DiaryEntry)
 
 	if !ok {
-		return failedToParseUserError
+		return failedToParseDiaryEntryError
 	}
 
 	result, err := databaseConnection.Exec(updateDiaryEntryQuery,
 		dbDiaryEntry.Title,
 		dbDiaryEntry.Content,
-		dbDiaryEntry.Date,
 		dbDiaryEntry.Id)
 
 	if err != nil {
@@ -155,7 +153,8 @@ func (diaryEntryStorage *DiaryEntryStorage) Delete(id uint) error {
 func (diaryEntryStorage *DiaryEntryStorage) Scan(rows *sql.Rows) (interface{}, error) {
 	var diaryEntry models.DiaryEntry
 
-	scanErr := rows.Scan(&diaryEntry.Id, &diaryEntry.Title, &diaryEntry.Content, &diaryEntry.Date, &diaryEntry.UserRefer)
+	scanErr := rows.Scan(&diaryEntry.Id, &diaryEntry.Title, &diaryEntry.Content,
+		&diaryEntry.Registration.RegistrationDate, &diaryEntry.Registration.UserRefer)
 
 	return diaryEntry, scanErr
 }
