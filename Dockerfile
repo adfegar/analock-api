@@ -1,4 +1,4 @@
-FROM golang:alpine
+FROM golang:bookworm
 
 ARG DB_URL
 ARG DB_TOKEN
@@ -7,12 +7,8 @@ LABEL maintainer="adferdev"
 
 RUN apk update && apk add --no-cache \
     git \
-    bash \
-    build-base \
-    libc6-compat \
+    build-essential \
     pkgconfig
-
-ENV LD_LIBRARY_PATH=/lib:/usr/lib
 
 RUN mkdir /app
 
