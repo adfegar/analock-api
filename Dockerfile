@@ -12,6 +12,8 @@ RUN apk update && apk add --no-cache \
     libc6-compat \
     pkgconfig
 
+ENV LD_LIBRARY_PATH=/lib:/usr/lib
+
 RUN mkdir /app
 
 WORKDIR /app
