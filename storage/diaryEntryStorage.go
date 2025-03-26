@@ -3,15 +3,17 @@ package storage
 import (
 	"database/sql"
 
+	"github.com/adfer-dev/analock-api/database"
 	"github.com/adfer-dev/analock-api/models"
 )
 
 const (
-	getDiaryEntryByIdentifierQuery = "SELECT de.id, de.title, de.content, ar.registration_date, ar.user_id FROM diary_entry de INNER JOIN activity_registration ar ON (de.id = ar.id) WHERE de.id = ?;"
-	getUserDiaryEntriesQuery       = "SELECT de.id, de.title, de.content, ar.registration_date, ar.user_id FROM diary_entry de INNER JOIN activity_registration ar ON (de.id = ar.id) WHERE ar.user_id = ?;"
-	insertDiaryEntryQuery          = "INSERT INTO diary_entry (title, content, registration_id) VALUES (?, ?, ?);"
-	updateDiaryEntryQuery          = "UPDATE diary_entry SET title = ?, content = ? WHERE id = ?;"
-	deleteDiaryEntryQuery          = "DELETE FROM diary_entry WHERE id = ?;"
+	getDiaryEntryByIdentifierQuery   = "SELECT de.id, de.title, de.content, ar.registration_date, ar.user_id FROM diary_entry de INNER JOIN activity_registration ar ON (de.id = ar.id) WHERE de.id = ?;"
+	getUserDiaryEntriesQuery         = "SELECT de.id, de.title, de.content, ar.id, ar.registration_date, ar.user_id FROM diary_entry de INNER JOIN activity_registration ar ON (de.id = ar.id) WHERE ar.user_id = ?;"
+	getIntervalUserDiaryEntriesQuery = "SELECT de.id, de.title, de.content, ar.id, ar.registration_date, ar.user_id FROM diary_entry de INNER JOIN activity_registration ar ON (de.registration_id = ar.id) WHERE ar.user_id = ? AND ar.registration_date >= ? AND ar.registration_date <= ?;"
+	insertDiaryEntryQuery            = "INSERT INTO diary_entry (title, content, registration_id) VALUES (?, ?, ?);"
+	updateDiaryEntryQuery            = "UPDATE diary_entry SET title = ?, content = ? WHERE id = ?;"
+	deleteDiaryEntryQuery            = "DELETE FROM diary_entry WHERE id = ?;"
 )
 
 type DiaryEntryStorage struct{}
@@ -20,7 +22,7 @@ var diaryEntryNotFoundError = &models.DbNotFoundError{DbItem: &models.DiaryEntry
 var failedToParseDiaryEntryError = &models.DbCouldNotParseItemError{DbItem: &models.DiaryEntry{}}
 
 func (diaryEntryStorage *DiaryEntryStorage) Get(id uint) (interface{}, error) {
-	result, err := databaseConnection.Query(getDiaryEntryByIdentifierQuery, id)
+	result, err := database.GetDatabaseInstance().GetConnection().Query(getDiaryEntryByIdentifierQuery, id)
 
 	if err != nil {
 		return nil, err
@@ -49,7 +51,35 @@ func (diaryEntryStorage *DiaryEntryStorage) Get(id uint) (interface{}, error) {
 
 func (diaryEntryStorage *DiaryEntryStorage) GetByUserId(userId uint) (interface{}, error) {
 	var userDiaryEntries []*models.DiaryEntry
-	result, err := databaseConnection.Query(getUserDiaryEntriesQuery, userId)
+	result, err := database.GetDatabaseInstance().GetConnection().Query(getUserDiaryEntriesQuery, userId)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer result.Close()
+
+	for result.Next() {
+		scannedDiaryEntry, scanErr := diaryEntryStorage.Scan(result)
+
+		if scanErr != nil {
+			return nil, scanErr
+		}
+		diaryEntry, ok := scannedDiaryEntry.(models.DiaryEntry)
+
+		if !ok {
+			return nil, failedToParseDiaryEntryError
+		}
+
+		userDiaryEntries = append(userDiaryEntries, &diaryEntry)
+	}
+
+	return userDiaryEntries, nil
+}
+
+func (diaryEntryStorage *DiaryEntryStorage) GetByUserIdAndDateInterval(userId uint, startDate int64, endDate int64) (interface{}, error) {
+	var userDiaryEntries []*models.DiaryEntry
+	result, err := database.GetDatabaseInstance().GetConnection().Query(getIntervalUserDiaryEntriesQuery, userId, startDate, endDate)
 
 	if err != nil {
 		return nil, err
@@ -82,7 +112,7 @@ func (diaryEntryStorage *DiaryEntryStorage) Create(diaryEntry interface{}) error
 		return failedToParseDiaryEntryError
 	}
 
-	result, err := databaseConnection.Exec(insertDiaryEntryQuery,
+	result, err := database.GetDatabaseInstance().GetConnection().Exec(insertDiaryEntryQuery,
 		dbDiaryEntry.Title,
 		dbDiaryEntry.Content,
 		dbDiaryEntry.Registration.Id)
@@ -108,7 +138,7 @@ func (diaryEntryStorage *DiaryEntryStorage) Update(diaryEntry interface{}) error
 		return failedToParseDiaryEntryError
 	}
 
-	result, err := databaseConnection.Exec(updateDiaryEntryQuery,
+	result, err := database.GetDatabaseInstance().GetConnection().Exec(updateDiaryEntryQuery,
 		dbDiaryEntry.Title,
 		dbDiaryEntry.Content,
 		dbDiaryEntry.Id)
@@ -131,7 +161,7 @@ func (diaryEntryStorage *DiaryEntryStorage) Update(diaryEntry interface{}) error
 }
 
 func (diaryEntryStorage *DiaryEntryStorage) Delete(id uint) error {
-	result, err := databaseConnection.Exec(deleteDiaryEntryQuery, id)
+	result, err := database.GetDatabaseInstance().GetConnection().Exec(deleteDiaryEntryQuery, id)
 
 	if err != nil {
 		return err
@@ -153,7 +183,7 @@ func (diaryEntryStorage *DiaryEntryStorage) Delete(id uint) error {
 func (diaryEntryStorage *DiaryEntryStorage) Scan(rows *sql.Rows) (interface{}, error) {
 	var diaryEntry models.DiaryEntry
 
-	scanErr := rows.Scan(&diaryEntry.Id, &diaryEntry.Title, &diaryEntry.Content,
+	scanErr := rows.Scan(&diaryEntry.Id, &diaryEntry.Title, &diaryEntry.Content, &diaryEntry.Registration.Id,
 		&diaryEntry.Registration.RegistrationDate, &diaryEntry.Registration.UserRefer)
 
 	return diaryEntry, scanErr

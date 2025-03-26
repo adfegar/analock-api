@@ -3,6 +3,7 @@ package storage
 import (
 	"database/sql"
 
+	"github.com/adfer-dev/analock-api/database"
 	"github.com/adfer-dev/analock-api/models"
 )
 
@@ -21,7 +22,7 @@ var tokenNotFoundError = &models.DbNotFoundError{DbItem: &models.Token{}}
 var failedToParseTokenError = &models.DbCouldNotParseItemError{DbItem: &models.Token{}}
 
 func (tokenStorage *TokenStorage) Get(id uint) (interface{}, error) {
-	result, err := databaseConnection.Query(getTokenQuery, id)
+	result, err := database.GetDatabaseInstance().GetConnection().Query(getTokenQuery, id)
 
 	if err != nil {
 		return nil, err
@@ -50,7 +51,7 @@ func (tokenStorage *TokenStorage) Get(id uint) (interface{}, error) {
 
 func (tokenStorage *TokenStorage) GetByUserId(id uint) ([2]*models.Token, error) {
 	var tokenPair [2]*models.Token
-	result, err := databaseConnection.Query(getTokenByUserQuery, id)
+	result, err := database.GetDatabaseInstance().GetConnection().Query(getTokenByUserQuery, id)
 
 	if err != nil {
 		return tokenPair, err
@@ -81,7 +82,7 @@ func (tokenStorage *TokenStorage) GetByUserId(id uint) ([2]*models.Token, error)
 }
 
 func (tokenStorage *TokenStorage) GetByValue(tokenValue string) (interface{}, error) {
-	result, err := databaseConnection.Query(getTokenByValueQuery, tokenValue)
+	result, err := database.GetDatabaseInstance().GetConnection().Query(getTokenByValueQuery, tokenValue)
 
 	if err != nil {
 		return nil, err
@@ -123,7 +124,7 @@ func (tokenStorage *TokenStorage) Create(token interface{}) error {
 		return tokenAlreadyExistsError
 	}
 
-	result, err := databaseConnection.Exec(insertTokenQuery, dbToken.TokenValue, dbToken.Kind, dbToken.UserRefer)
+	result, err := database.GetDatabaseInstance().GetConnection().Exec(insertTokenQuery, dbToken.TokenValue, dbToken.Kind, dbToken.UserRefer)
 	if err != nil {
 		return err
 	}
@@ -145,7 +146,7 @@ func (tokenStorage *TokenStorage) Update(token interface{}) error {
 		return failedToParseUserError
 	}
 
-	result, err := databaseConnection.Exec(updateTokenQuery, dbToken.TokenValue, dbToken.Kind, dbToken.Id)
+	result, err := database.GetDatabaseInstance().GetConnection().Exec(updateTokenQuery, dbToken.TokenValue, dbToken.Kind, dbToken.Id)
 
 	if err != nil {
 		return err
@@ -165,7 +166,7 @@ func (tokenStorage *TokenStorage) Update(token interface{}) error {
 }
 
 func (tokenStorage *TokenStorage) Delete(id uint) error {
-	result, err := databaseConnection.Exec(deleteTokenQuery, id)
+	result, err := database.GetDatabaseInstance().GetConnection().Exec(deleteTokenQuery, id)
 
 	if err != nil {
 		return err

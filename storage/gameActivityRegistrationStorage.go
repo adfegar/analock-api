@@ -3,12 +3,13 @@ package storage
 import (
 	"database/sql"
 
+	"github.com/adfer-dev/analock-api/database"
 	"github.com/adfer-dev/analock-api/models"
 )
 
 const (
-	getGameActivityRegistrationByIdentifierQuery = "SELECT arg.id, arb.game_name, ar.registration_date, ar.user_id FROM activity_registration_game arg INNER JOIN activity_registration ar ON (arg.registration_id = ar.id) WHERE arg.id = ?;"
-	getUserGameActivityRegistrationsQuery        = "SELECT arg.id, arg.game_name, ar.registration_date, ar.user_id FROM activity_registration_game arg INNER JOIN activity_registration ar ON (arg.registration_id = ar.id) WHERE ar.user_id = ?;"
+	getGameActivityRegistrationByIdentifierQuery = "SELECT arg.id, arb.game_name, ar.id, ar.registration_date, ar.user_id FROM activity_registration_game arg INNER JOIN activity_registration ar ON (arg.registration_id = ar.id) WHERE arg.id = ?;"
+	getUserGameActivityRegistrationsQuery        = "SELECT arg.id, arg.game_name, ar.id, ar.registration_date, ar.user_id FROM activity_registration_game arg INNER JOIN activity_registration ar ON (arg.registration_id = ar.id) WHERE ar.user_id = ? AND ar.registration_date >= ? AND ar.registration_date <= ?;"
 	insertGameActivityRegistrationQuery          = "INSERT INTO activity_registration_game (game_name, registration_id) VALUES (?, ?);"
 	updateGameActivityRegistrationQuery          = "UPDATE activity_registration_game SET game_name = ? WHERE id = ?;"
 	deleteGameActivityRegistrationQuery          = "DELETE FROM activity_registration_game WHERE id = ?;"
@@ -20,7 +21,7 @@ var gameActivityRegistrationNotFoundError = &models.DbNotFoundError{DbItem: &mod
 var failedToParseGameActivityRegistrationError = &models.DbCouldNotParseItemError{DbItem: &models.GameActivityRegistration{}}
 
 func (gameActivityRegistrationStorage *GameActivityRegistrationStorage) Get(id uint) (interface{}, error) {
-	result, err := databaseConnection.Query(getGameActivityRegistrationByIdentifierQuery, id)
+	result, err := database.GetDatabaseInstance().GetConnection().Query(getGameActivityRegistrationByIdentifierQuery, id)
 
 	if err != nil {
 		return nil, err
@@ -47,9 +48,9 @@ func (gameActivityRegistrationStorage *GameActivityRegistrationStorage) Get(id u
 	return &gameActivityRegistration, nil
 }
 
-func (gameActivityRegistrationStorage *GameActivityRegistrationStorage) GetByUserId(userId uint) (interface{}, error) {
+func (gameActivityRegistrationStorage *GameActivityRegistrationStorage) GetByUserIdAndInterval(userId uint, startDate int64, endDate int64) (interface{}, error) {
 	var userGameActivityRegistrations []*models.GameActivityRegistration
-	result, err := databaseConnection.Query(getUserGameActivityRegistrationsQuery, userId)
+	result, err := database.GetDatabaseInstance().GetConnection().Query(getUserGameActivityRegistrationsQuery, userId, startDate, endDate)
 
 	if err != nil {
 		return nil, err
@@ -72,6 +73,10 @@ func (gameActivityRegistrationStorage *GameActivityRegistrationStorage) GetByUse
 		userGameActivityRegistrations = append(userGameActivityRegistrations, &gameActivityRegistration)
 	}
 
+	if userGameActivityRegistrations == nil {
+		return nil, bookActivityRegistrationNotFoundError
+	}
+
 	return userGameActivityRegistrations, nil
 }
 
@@ -82,7 +87,7 @@ func (gameActivityRegistrationStorage *GameActivityRegistrationStorage) Create(g
 		return failedToParseDiaryEntryError
 	}
 
-	result, err := databaseConnection.Exec(insertGameActivityRegistrationQuery,
+	result, err := database.GetDatabaseInstance().GetConnection().Exec(insertGameActivityRegistrationQuery,
 		dbGameRegistration.GameName,
 		dbGameRegistration.Registration.Id)
 
@@ -107,7 +112,7 @@ func (gameActivityRegistrationStorage *GameActivityRegistrationStorage) Update(g
 		return failedToParseGameActivityRegistrationError
 	}
 
-	result, err := databaseConnection.Exec(updateDiaryEntryQuery,
+	result, err := database.GetDatabaseInstance().GetConnection().Exec(updateDiaryEntryQuery,
 		dbGameRegistration.GameName,
 		dbGameRegistration.Id)
 
@@ -129,7 +134,7 @@ func (gameActivityRegistrationStorage *GameActivityRegistrationStorage) Update(g
 }
 
 func (gameActivityRegistrationStorage *GameActivityRegistrationStorage) Delete(id uint) error {
-	result, err := databaseConnection.Exec(deleteGameActivityRegistrationQuery, id)
+	result, err := database.GetDatabaseInstance().GetConnection().Exec(deleteGameActivityRegistrationQuery, id)
 
 	if err != nil {
 		return err
@@ -151,7 +156,7 @@ func (gameActivityRegistrationStorage *GameActivityRegistrationStorage) Delete(i
 func (gameActivityRegistrationStorage *GameActivityRegistrationStorage) Scan(rows *sql.Rows) (interface{}, error) {
 	var gameActivityRegistration models.GameActivityRegistration
 
-	scanErr := rows.Scan(&gameActivityRegistration.Id, &gameActivityRegistration.GameName,
+	scanErr := rows.Scan(&gameActivityRegistration.Id, &gameActivityRegistration.GameName, &gameActivityRegistration.Registration.Id,
 		&gameActivityRegistration.Registration.RegistrationDate, &gameActivityRegistration.Registration.UserRefer)
 
 	return gameActivityRegistration, scanErr

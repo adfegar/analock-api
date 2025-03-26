@@ -3,6 +3,7 @@ package storage
 import (
 	"database/sql"
 
+	"github.com/adfer-dev/analock-api/database"
 	"github.com/adfer-dev/analock-api/models"
 )
 
@@ -19,7 +20,7 @@ var activityRegistrationNotFoundError = &models.DbNotFoundError{DbItem: &models.
 var failedToParseActivityRegistrationError = &models.DbCouldNotParseItemError{DbItem: &models.ActivityRegistration{}}
 
 func (activityRegistrationStorage *ActivityRegistrationStorage) Get(id uint) (interface{}, error) {
-	result, err := databaseConnection.Query(getActivityRegistrationByIdentifierQuery, id)
+	result, err := database.GetDatabaseInstance().GetConnection().Query(getActivityRegistrationByIdentifierQuery, id)
 
 	if err != nil {
 		return nil, err
@@ -52,7 +53,7 @@ func (activityRegistrationStorage *ActivityRegistrationStorage) Create(activityR
 		return failedToParseActivityRegistrationError
 	}
 
-	result, err := databaseConnection.Exec(insertActivityRegistrationQuery,
+	result, err := database.GetDatabaseInstance().GetConnection().Exec(insertActivityRegistrationQuery,
 		dbActivityRegistration.RegistrationDate,
 		dbActivityRegistration.UserRefer)
 
@@ -77,7 +78,7 @@ func (activityRegistrationStorage *ActivityRegistrationStorage) Update(activityR
 		return failedToParseActivityRegistrationError
 	}
 
-	result, err := databaseConnection.Exec(updateDiaryEntryQuery,
+	result, err := database.GetDatabaseInstance().GetConnection().Exec(updateDiaryEntryQuery,
 		dbActivityRegistration.RegistrationDate,
 		dbActivityRegistration.Id)
 
@@ -100,7 +101,7 @@ func (activityRegistrationStorage *ActivityRegistrationStorage) Update(activityR
 
 func (activityRegistrationStorage *ActivityRegistrationStorage) Delete(id uint) error {
 
-	result, err := databaseConnection.Exec(deleteActivityRegistrationQuery, id)
+	result, err := database.GetDatabaseInstance().GetConnection().Exec(deleteActivityRegistrationQuery, id)
 
 	if err != nil {
 		return err
