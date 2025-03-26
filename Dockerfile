@@ -5,7 +5,12 @@ ARG DB_TOKEN
 
 LABEL maintainer="adferdev"
 
-RUN apk update && apk add --no-cache git && apk add --no-cach bash && apk add build-base
+RUN apk update && apk add --no-cache \
+    git \
+    bash \
+    build-base \
+    libc6-compat \
+    pkgconfig
 
 RUN mkdir /app
 
