@@ -20,8 +20,8 @@ type AddGameActivityRegistrationBody struct {
 var bookActivityRegistrationStorage = &storage.BookActivityRegistrationStorage{}
 var gameActivityRegistrationStorage = &storage.GameActivityRegistrationStorage{}
 
-func GetUserBookActivityRegistrations(userId uint) ([]*models.BookActivityRegistration, error) {
-	dbUserRegistrations, err := bookActivityRegistrationStorage.GetByUserId(userId)
+func GetUserBookActivityRegistrationsTimeRange(userId uint, startTime int64, endTime int64) ([]*models.BookActivityRegistration, error) {
+	dbUserRegistrations, err := bookActivityRegistrationStorage.GetByUserIdAndTimeRange(userId, startTime, endTime)
 
 	if err != nil {
 		return nil, err
@@ -30,8 +30,8 @@ func GetUserBookActivityRegistrations(userId uint) ([]*models.BookActivityRegist
 	return dbUserRegistrations.([]*models.BookActivityRegistration), nil
 }
 
-func GetUserGameActivityRegistrations(userId uint) ([]*models.GameActivityRegistration, error) {
-	dbUserRegistrations, err := gameActivityRegistrationStorage.GetByUserId(userId)
+func GetUserGameActivityRegistrationsTimeRange(userId uint, startDate int64, endDate int64) ([]*models.GameActivityRegistration, error) {
+	dbUserRegistrations, err := gameActivityRegistrationStorage.GetByUserIdAndInterval(userId, startDate, endDate)
 
 	if err != nil {
 		return nil, err

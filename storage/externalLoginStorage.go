@@ -3,6 +3,7 @@ package storage
 import (
 	"database/sql"
 
+	"github.com/adfer-dev/analock-api/database"
 	"github.com/adfer-dev/analock-api/models"
 )
 
@@ -22,7 +23,7 @@ var externalLoginNotFoundError = &models.DbNotFoundError{DbItem: &models.Externa
 var failedToParseExternalLoginError = &models.DbCouldNotParseItemError{DbItem: &models.ExternalLogin{}}
 
 func (externalLoginStorage *ExternalLoginStorage) Get(id uint) (interface{}, error) {
-	result, err := databaseConnection.Query(getExternalLoginQuery, id)
+	result, err := database.GetDatabaseInstance().GetConnection().Query(getExternalLoginQuery, id)
 
 	if err != nil {
 		return nil, err
@@ -50,7 +51,7 @@ func (externalLoginStorage *ExternalLoginStorage) Get(id uint) (interface{}, err
 }
 
 func (externalLoginStorage *ExternalLoginStorage) GetByClientId(clientId string) (interface{}, error) {
-	result, err := databaseConnection.Query(getExternalLoginByClientQuery, clientId)
+	result, err := database.GetDatabaseInstance().GetConnection().Query(getExternalLoginByClientQuery, clientId)
 
 	if err != nil {
 		return nil, err
@@ -84,7 +85,7 @@ func (externalLoginStorage *ExternalLoginStorage) Create(externalLogin interface
 		return failedToParseUserError
 	}
 
-	result, err := databaseConnection.Exec(insertExternalLoginQuery, dbExternalLogin.Provider, dbExternalLogin.ClientId, dbExternalLogin.ClientToken,
+	result, err := database.GetDatabaseInstance().GetConnection().Exec(insertExternalLoginQuery, dbExternalLogin.Provider, dbExternalLogin.ClientId, dbExternalLogin.ClientToken,
 		dbExternalLogin.UserRefer)
 	if err != nil {
 		return err
@@ -107,7 +108,7 @@ func (externalLoginStorage *ExternalLoginStorage) Update(externalLogin interface
 		return failedToParseUserError
 	}
 
-	result, err := databaseConnection.Exec(updateExternalLoginQuery, dbExternalLogin.Provider, dbExternalLogin.ClientId,
+	result, err := database.GetDatabaseInstance().GetConnection().Exec(updateExternalLoginQuery, dbExternalLogin.Provider, dbExternalLogin.ClientId,
 		dbExternalLogin.UserRefer)
 
 	if err != nil {
@@ -128,7 +129,7 @@ func (externalLoginStorage *ExternalLoginStorage) Update(externalLogin interface
 }
 
 func (externalLoginStorage *ExternalLoginStorage) Delete(id uint) error {
-	result, err := databaseConnection.Exec(deleteExternalLoginQuery, id)
+	result, err := database.GetDatabaseInstance().GetConnection().Exec(deleteExternalLoginQuery, id)
 
 	if err != nil {
 		return err

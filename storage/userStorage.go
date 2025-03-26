@@ -3,6 +3,7 @@ package storage
 import (
 	"database/sql"
 
+	"github.com/adfer-dev/analock-api/database"
 	"github.com/adfer-dev/analock-api/models"
 )
 
@@ -20,7 +21,7 @@ var userNotFoundError = &models.DbNotFoundError{DbItem: &models.User{}}
 var failedToParseUserError = &models.DbCouldNotParseItemError{DbItem: &models.User{}}
 
 func (userStorage *UserStorage) Get(id uint) (interface{}, error) {
-	result, err := databaseConnection.Query(getUserQuery, id)
+	result, err := database.GetDatabaseInstance().GetConnection().Query(getUserQuery, id)
 
 	if err != nil {
 		return nil, err
@@ -48,7 +49,7 @@ func (userStorage *UserStorage) Get(id uint) (interface{}, error) {
 }
 
 func (userStorage *UserStorage) GetByUserName(userName string) (interface{}, error) {
-	result, err := databaseConnection.Query(getUserQuery, userName)
+	result, err := database.GetDatabaseInstance().GetConnection().Query(getUserQuery, userName)
 
 	if err != nil {
 		return nil, err
@@ -90,7 +91,7 @@ func (userStorage *UserStorage) Create(user interface{}) error {
 		return userAlreadyExistsError
 	}
 
-	result, err := databaseConnection.Exec(insertUserQuery, dbUser.UserName, dbUser.Role)
+	result, err := database.GetDatabaseInstance().GetConnection().Exec(insertUserQuery, dbUser.UserName, dbUser.Role)
 	if err != nil {
 		storageLogger.ErrorLogger.Printf("error when saving user: %s", err.Error())
 		return err
@@ -113,7 +114,7 @@ func (userStorage *UserStorage) Update(user interface{}) error {
 		return failedToParseUserError
 	}
 
-	result, err := databaseConnection.Exec(updateUserQuery, dbUser.UserName, dbUser.Role, dbUser.Id)
+	result, err := database.GetDatabaseInstance().GetConnection().Exec(updateUserQuery, dbUser.UserName, dbUser.Role, dbUser.Id)
 
 	if err != nil {
 		return err
@@ -134,7 +135,7 @@ func (userStorage *UserStorage) Update(user interface{}) error {
 
 func (userStorage *UserStorage) Delete(id uint) error {
 
-	result, err := databaseConnection.Exec(deleteUserQuery, id)
+	result, err := database.GetDatabaseInstance().GetConnection().Exec(deleteUserQuery, id)
 
 	if err != nil {
 		return err

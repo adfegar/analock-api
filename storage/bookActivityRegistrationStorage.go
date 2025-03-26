@@ -3,15 +3,16 @@ package storage
 import (
 	"database/sql"
 
+	"github.com/adfer-dev/analock-api/database"
 	"github.com/adfer-dev/analock-api/models"
 )
 
 const (
-	getBookActivityRegistrationByIdentifierQuery = "SELECT arb.id, arb.internet_archive_id, ar.registration_date, ar.user_id FROM activity_registration_book arb INNER JOIN activity_registration ar ON (arb.registration_id = ar.id) WHERE arb.id = ?;"
-	getUserBookActivityRegistrationsQuery        = "SELECT arb.id, arb.internet_archive_id, ar.registration_date, ar.user_id FROM activity_registration_book arb INNER JOIN activity_registration ar ON (arb.registration_id = ar.id) WHERE ar.user_id = ?;"
-	insertBookActivityRegistrationQuery          = "INSERT INTO activity_registration_book (internet_archive_id, registration_id) VALUES (?, ?);"
-	updateBookActivityRegistrationQuery          = "UPDATE activity_registration_book SET internet_archive_id = ? WHERE id = ?;"
-	deleteBookActivityRegistrationQuery          = "DELETE FROM activity_registration_book WHERE id = ?;"
+	getBookActivityRegistrationByIdentifierQuery  = "SELECT arb.id, arb.internet_archive_id, ar.registration_date, ar.user_id FROM activity_registration_book arb INNER JOIN activity_registration ar ON (arb.registration_id = ar.id) WHERE arb.id = ?;"
+	getIntervalUserBookActivityRegistrationsQuery = "SELECT arb.id, arb.internet_archive_id, ar.id, ar.registration_date, ar.user_id FROM activity_registration_book arb INNER JOIN activity_registration ar ON (arb.registration_id = ar.id) WHERE ar.user_id = ? AND ar.registration_date >= ? AND ar.registration_date <= ?;"
+	insertBookActivityRegistrationQuery           = "INSERT INTO activity_registration_book (internet_archive_id, registration_id) VALUES (?, ?);"
+	updateBookActivityRegistrationQuery           = "UPDATE activity_registration_book SET internet_archive_id = ? WHERE id = ?;"
+	deleteBookActivityRegistrationQuery           = "DELETE FROM activity_registration_book WHERE id = ?;"
 )
 
 type BookActivityRegistrationStorage struct{}
@@ -20,7 +21,7 @@ var bookActivityRegistrationNotFoundError = &models.DbNotFoundError{DbItem: &mod
 var failedToParseBookActivityRegistrationError = &models.DbCouldNotParseItemError{DbItem: &models.BookActivityRegistration{}}
 
 func (bookActivityRegistrationStorage *BookActivityRegistrationStorage) Get(id uint) (interface{}, error) {
-	result, err := databaseConnection.Query(getBookActivityRegistrationByIdentifierQuery, id)
+	result, err := database.GetDatabaseInstance().GetConnection().Query(getBookActivityRegistrationByIdentifierQuery, id)
 
 	if err != nil {
 		return nil, err
@@ -47,9 +48,9 @@ func (bookActivityRegistrationStorage *BookActivityRegistrationStorage) Get(id u
 	return &bookActivityRegistration, nil
 }
 
-func (bookActivityRegistrationStorage *BookActivityRegistrationStorage) GetByUserId(userId uint) (interface{}, error) {
+func (bookActivityRegistrationStorage *BookActivityRegistrationStorage) GetByUserIdAndTimeRange(userId uint, startTime int64, endTime int64) (interface{}, error) {
 	var userBookActivityRegistrations []*models.BookActivityRegistration
-	result, err := databaseConnection.Query(getUserBookActivityRegistrationsQuery, userId)
+	result, err := database.GetDatabaseInstance().GetConnection().Query(getIntervalUserBookActivityRegistrationsQuery, userId, startTime, endTime)
 
 	if err != nil {
 		return nil, err
@@ -72,6 +73,10 @@ func (bookActivityRegistrationStorage *BookActivityRegistrationStorage) GetByUse
 		userBookActivityRegistrations = append(userBookActivityRegistrations, &bookActivityRegistration)
 	}
 
+	if userBookActivityRegistrations == nil {
+		return nil, bookActivityRegistrationNotFoundError
+	}
+
 	return userBookActivityRegistrations, nil
 }
 
@@ -82,7 +87,7 @@ func (bookActivityRegistrationStorage *BookActivityRegistrationStorage) Create(b
 		return failedToParseDiaryEntryError
 	}
 
-	result, err := databaseConnection.Exec(insertBookActivityRegistrationQuery,
+	result, err := database.GetDatabaseInstance().GetConnection().Exec(insertBookActivityRegistrationQuery,
 		dbBookRegistration.InternetArchiveIdentifier,
 		dbBookRegistration.Registration.Id)
 
@@ -107,7 +112,7 @@ func (bookActivityRegistrationStorage *BookActivityRegistrationStorage) Update(b
 		return failedToParseBookActivityRegistrationError
 	}
 
-	result, err := databaseConnection.Exec(updateDiaryEntryQuery,
+	result, err := database.GetDatabaseInstance().GetConnection().Exec(updateDiaryEntryQuery,
 		dbBookRegistration.InternetArchiveIdentifier,
 		dbBookRegistration.Id)
 
@@ -129,7 +134,7 @@ func (bookActivityRegistrationStorage *BookActivityRegistrationStorage) Update(b
 }
 
 func (bookActivityRegistrationStorage *BookActivityRegistrationStorage) Delete(id uint) error {
-	result, err := databaseConnection.Exec(deleteBookActivityRegistrationQuery, id)
+	result, err := database.GetDatabaseInstance().GetConnection().Exec(deleteBookActivityRegistrationQuery, id)
 
 	if err != nil {
 		return err
@@ -151,7 +156,7 @@ func (bookActivityRegistrationStorage *BookActivityRegistrationStorage) Delete(i
 func (bookActivityRegistrationStorage *BookActivityRegistrationStorage) Scan(rows *sql.Rows) (interface{}, error) {
 	var bookActivityRegistration models.BookActivityRegistration
 
-	scanErr := rows.Scan(&bookActivityRegistration.Id, &bookActivityRegistration.InternetArchiveIdentifier,
+	scanErr := rows.Scan(&bookActivityRegistration.Id, &bookActivityRegistration.InternetArchiveIdentifier, &bookActivityRegistration.Registration.Id,
 		&bookActivityRegistration.Registration.RegistrationDate, &bookActivityRegistration.Registration.UserRefer)
 
 	return bookActivityRegistration, scanErr

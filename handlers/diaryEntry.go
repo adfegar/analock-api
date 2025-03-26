@@ -1,9 +1,12 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
+	"github.com/adfer-dev/analock-api/constants"
+	"github.com/adfer-dev/analock-api/models"
 	"github.com/adfer-dev/analock-api/services"
 	"github.com/adfer-dev/analock-api/utils"
 	"github.com/gorilla/mux"
@@ -18,13 +21,35 @@ func InitDiaryEntryRoutes(router *mux.Router) {
 func handleGetUserEntries(res http.ResponseWriter, req *http.Request) error {
 	userId, _ := strconv.Atoi(mux.Vars(req)["userId"])
 
-	userDiaryEntries, err := services.GetUserEntries(uint(userId))
+	startDateString := req.URL.Query().Get(constants.StartDateQueryParam)
+	endDateString := req.URL.Query().Get(constants.EndDateQueryParam)
 
+	if len(startDateString) == 0 || len(endDateString) == 0 {
+		userDiaryEntries, err := services.GetUserEntries(uint(userId))
+
+		if err != nil {
+			return utils.WriteJSON(res, 500, err.Error())
+		}
+
+		return utils.WriteJSON(res, 200, userDiaryEntries)
+	}
+
+	startDate, startDateErr := strconv.Atoi(startDateString)
+
+	if startDateErr != nil {
+		return utils.WriteJSON(res, 400, models.HttpError{Status: http.StatusBadRequest, Description: fmt.Sprintf(constants.QueryParamError, constants.StartDateQueryParam)})
+	}
+	endDate, endDateErr := strconv.Atoi(endDateString)
+
+	if endDateErr != nil {
+		return utils.WriteJSON(res, 400, models.HttpError{Status: http.StatusBadRequest, Description: fmt.Sprintf(constants.QueryParamError, constants.EndDateQueryParam)})
+	}
+	dateIntervalUserDiaryEntries, err := services.GetUserEntriesTimeRange(uint(userId), int64(startDate), int64(endDate))
 	if err != nil {
 		return utils.WriteJSON(res, 500, err.Error())
 	}
 
-	return utils.WriteJSON(res, 200, userDiaryEntries)
+	return utils.WriteJSON(res, 200, dateIntervalUserDiaryEntries)
 }
 
 func handleCreateDiaryEntry(res http.ResponseWriter, req *http.Request) error {

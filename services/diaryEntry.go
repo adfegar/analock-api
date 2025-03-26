@@ -41,6 +41,16 @@ func GetUserEntries(userId uint) ([]*models.DiaryEntry, error) {
 	return diaryEntry.([]*models.DiaryEntry), nil
 }
 
+func GetUserEntriesTimeRange(userId uint, startDate int64, endDate int64) ([]*models.DiaryEntry, error) {
+	diaryEntry, err := diaryEntryStorage.GetByUserIdAndDateInterval(userId, startDate, endDate)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return diaryEntry.([]*models.DiaryEntry), nil
+}
+
 func SaveDiaryEntry(diaryEntryBody *SaveDiaryEntryBody) (*models.DiaryEntry, error) {
 	dbActivityRegistration := &models.ActivityRegistration{
 		RegistrationDate: diaryEntryBody.PublishDate,
