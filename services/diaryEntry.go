@@ -78,28 +78,40 @@ func SaveDiaryEntry(diaryEntryBody *SaveDiaryEntryBody) (*models.DiaryEntry, err
 }
 
 func UpdateDiaryEntry(diaryEntryId uint, diaryEntryBody *UpdateDiaryEntryBody) (*models.DiaryEntry, error) {
-	dbRegistration := &models.ActivityRegistration{
-		RegistrationDate: diaryEntryBody.PublishDate,
+
+	storedDiaryEntry, getDiaryEntryError := GetDiaryEntryById(diaryEntryId)
+
+	if getDiaryEntryError != nil {
+		return nil, getDiaryEntryError
 	}
 
+	dbRegistration := &models.ActivityRegistration{
+		Id:               storedDiaryEntry.Registration.Id,
+		RegistrationDate: diaryEntryBody.PublishDate,
+	}
 	updateRegistrationErr := activityRegistrationStorage.Update(dbRegistration)
 
 	if updateRegistrationErr != nil {
 		return nil, updateRegistrationErr
 	}
 
-	dbEntry := &models.DiaryEntry{
+	updatedDiaryEntry := &models.DiaryEntry{
 		Id:      diaryEntryId,
 		Title:   diaryEntryBody.Title,
 		Content: diaryEntryBody.Content,
+		Registration: models.ActivityRegistration{
+			Id:               dbRegistration.Id,
+			RegistrationDate: dbRegistration.RegistrationDate,
+			UserRefer:        storedDiaryEntry.Registration.UserRefer,
+		},
 	}
-	err := diaryEntryStorage.Update(dbEntry)
+	err := diaryEntryStorage.Update(updatedDiaryEntry)
 
 	if err != nil {
 		return nil, err
 	}
 
-	return dbEntry, nil
+	return updatedDiaryEntry, nil
 }
 
 func DeleteDiaryEntry(id uint) error {

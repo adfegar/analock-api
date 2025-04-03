@@ -7,6 +7,10 @@ import (
 
 var externalLoginStorage *storage.ExternalLoginStorage = &storage.ExternalLoginStorage{}
 
+type UpdateExternalLoginBody struct {
+	ClientToken string `json:"provider_client_token"`
+}
+
 func GetExternalLoginById(id uint) (*models.ExternalLogin, error) {
 	externalLogin, err := externalLoginStorage.Get(id)
 
@@ -45,6 +49,20 @@ func UpdateExternalLogin(externalLoginBody *models.ExternalLogin) (*models.Exter
 	}
 
 	return externalLoginBody, nil
+}
+
+func UpdateUserExternalLoginToken(userId uint, externalLoginBody *UpdateExternalLoginBody) (*models.ExternalLogin, error) {
+	dbExternalLogin := &models.ExternalLogin{
+		UserRefer:   userId,
+		ClientToken: externalLoginBody.ClientToken,
+	}
+	err := externalLoginStorage.UpdateUserExternalLoginToken(dbExternalLogin)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return dbExternalLogin, nil
 }
 
 func DeleteExternalLogin(id uint) error {

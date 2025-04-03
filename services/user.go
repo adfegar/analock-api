@@ -6,6 +6,7 @@ import (
 )
 
 type UserBody struct {
+	Email    string `json:"email" validate:"required,email"`
 	UserName string `json:"username" validate:"required,alphanum"`
 }
 
@@ -21,8 +22,8 @@ func GetUserById(id uint) (*models.User, error) {
 	return user.(*models.User), nil
 }
 
-func GetUserByUserName(userName string) (*models.User, error) {
-	user, err := userStorage.GetByUserName(userName)
+func GetUserByEmail(email string) (*models.User, error) {
+	user, err := userStorage.GetByEmail(email)
 
 	if err != nil {
 		return nil, err
@@ -32,9 +33,11 @@ func GetUserByUserName(userName string) (*models.User, error) {
 }
 
 func SaveUser(userBody UserBody) (*models.User, error) {
-	savedUser := &models.User{}
-	savedUser.UserName = userBody.UserName
-	savedUser.Role = models.Standard
+	savedUser := &models.User{
+		Email:    userBody.Email,
+		UserName: userBody.UserName,
+		Role:     models.Standard,
+	}
 
 	err := userStorage.Create(savedUser)
 
@@ -48,6 +51,7 @@ func SaveUser(userBody UserBody) (*models.User, error) {
 func UpdateUser(userBody UserBody) (*models.User, error) {
 	updatedUser := &models.User{}
 	updatedUser.UserName = userBody.UserName
+	updatedUser.Email = userBody.Email
 	updatedUser.Role = models.Standard
 
 	err := userStorage.Update(updatedUser)

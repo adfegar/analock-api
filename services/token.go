@@ -25,6 +25,12 @@ func GetTokenByValue(tokenValue string) (*models.Token, error) {
 	return token.(*models.Token), err
 }
 
+func GetUserTokenByKind(userId uint, kind models.TokenKind) (*models.Token, error) {
+	token, err := tokenStorage.GetByUserAndKind(userId, kind)
+
+	return token.(*models.Token), err
+}
+
 func GetUserTokenPair(userId uint) ([2]*models.Token, error) {
 	tokenPair, err := tokenStorage.GetByUserId(userId)
 

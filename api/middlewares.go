@@ -30,6 +30,9 @@ func AuthMiddleware(next http.Handler) http.Handler {
 			//If the token is valid, execute the next function. Otherwise, respond with an error.
 			if authErr == nil {
 				next.ServeHTTP(res, req)
+			} else if authErr.Error() != "method not allowed" {
+				utils.WriteJSON(res, 401,
+					models.HttpError{Status: 401, Description: authErr.Error()})
 			} else {
 				utils.WriteJSON(res, 403,
 					models.HttpError{Status: 403, Description: authErr.Error()})
@@ -108,7 +111,8 @@ func checkAuth(req *http.Request) error {
 
 	//Validate token
 	if err := auth.ValidateToken(tokenString); err != nil {
-		if err.(*jwt.ValidationError).Errors == jwt.ValidationErrorExpired {
+		validationErr, ok := err.(*jwt.ValidationError)
+		if ok && validationErr.Errors == jwt.ValidationErrorExpired {
 			return errors.New("token expired. Please, get a new one at /auth/refresh-token")
 		} else {
 			return errors.New("token not valid")
@@ -126,14 +130,13 @@ func checkAuth(req *http.Request) error {
 		return claimsErr
 	}
 
-	user, _ := services.GetUserByUserName(claims["username"].(string))
+	user, _ := services.GetUserByEmail(claims["email"].(string))
 	// user-accessible endpoints
-	userActionEndpoints := regexp.MustCompile(`/api/v1/users/\d/(add-to-room|delete-from-room)`)
-	userNoteEndpoints := regexp.MustCompile(`/api/v1/notes/*`)
-	userRoomEndpoints := regexp.MustCompile((`/api/v1/rooms/*`))
+	userDiaryEntryEndpoints := regexp.MustCompile(`/api/v1/diaryEntries/*`)
+	userActivityRegistrationEndpoints := regexp.MustCompile(`/api/v1/activityRegistrations/*`)
 	// for POST, PUT and DELETE methods, check if user is admin and that the endpoint is not user accessible
 	if ((req.Method == "POST" || req.Method == "PUT" || req.Method == "DELETE") && (user.Role != models.Admin)) &&
-		(!userActionEndpoints.MatchString(req.URL.Path) && !userNoteEndpoints.MatchString(req.URL.Path) && !userRoomEndpoints.MatchString(req.URL.Path)) {
+		(!userDiaryEntryEndpoints.MatchString(req.URL.Path) && !userActivityRegistrationEndpoints.MatchString(req.URL.Path)) {
 		return errors.New("method not allowed")
 	}
 

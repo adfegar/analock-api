@@ -11,12 +11,8 @@ import (
 )
 
 type UserAuthenticateBody struct {
-	ProviderId    string `json:"providerId" validate:"required"`
-	ProviderToken string `json:"providerToken" validate:"required,jwt"`
-}
-
-type UserRegisterBody struct {
-	UserName      string `json:"username" validate:"required"`
+	Email         string `json:"email" validate:"required,email"`
+	UserName      string `json:"userName" validate:"required"`
 	ProviderId    string `json:"providerId" validate:"required"`
 	ProviderToken string `json:"providerToken" validate:"required,jwt"`
 }
@@ -30,27 +26,8 @@ type RefreshTokenRequest struct {
 	RefreshToken string `json:"refreshToken" validate:"required,jwt"`
 }
 
-func RegisterUser(userBody UserRegisterBody) (*models.Token, *models.Token, error) {
-	user, saveUserErr := SaveUser(UserBody{userBody.UserName})
-
-	if saveUserErr != nil {
-		return nil, nil, saveUserErr
-	}
-
-	googleTokenErr := validateGoogleToken(userBody.ProviderToken)
-
-	if googleTokenErr != nil {
-		return nil, nil, googleTokenErr
-	}
-
-	_, saveExternalLoginErr := SaveExternalLogin(&models.ExternalLogin{Provider: models.Google,
-		ClientId: userBody.ProviderId, ClientToken: userBody.ProviderToken, UserRefer: user.Id})
-
-	if saveExternalLoginErr != nil {
-		return nil, nil, saveExternalLoginErr
-	}
-
-	return generateAndSaveTokenPair(user)
+type RefreshTokenResponse struct {
+	Token string `json:"token"`
 }
 
 func AuthenticateUser(authBody UserAuthenticateBody) (*models.Token, *models.Token, error) {
@@ -60,22 +37,46 @@ func AuthenticateUser(authBody UserAuthenticateBody) (*models.Token, *models.Tok
 		return nil, nil, googleValidateErr
 	}
 
-	externalLogin, err := GetExternalLoginByClientId(authBody.ProviderId)
+	user, getUserErr := GetUserByEmail(authBody.Email)
 
-	if err != nil {
-		return nil, nil, err
+	if getUserErr == nil {
+		externalLogin := &UpdateExternalLoginBody{
+			ClientToken: authBody.ProviderToken,
+		}
+		_, saveExternalLoginError := UpdateUserExternalLoginToken(user.Id, externalLogin)
+
+		if saveExternalLoginError != nil {
+			return nil, nil, saveExternalLoginError
+		}
+
+		return updateTokenPair(user)
+	} else {
+		userBody := UserBody{
+			Email:    authBody.Email,
+			UserName: authBody.UserName,
+		}
+		savedUser, saveUserError := SaveUser(userBody)
+
+		if saveUserError != nil {
+			return nil, nil, saveUserError
+		}
+		externalLogin := &models.ExternalLogin{
+			ClientId:    authBody.ProviderId,
+			ClientToken: authBody.ProviderToken,
+			UserRefer:   savedUser.Id,
+			Provider:    models.Google,
+		}
+		_, saveExternalLoginError := SaveExternalLogin(externalLogin)
+
+		if saveExternalLoginError != nil {
+			return nil, nil, saveExternalLoginError
+		}
+
+		return generateAndSaveTokenPair(savedUser)
 	}
-
-	user, getUserErr := GetUserById(externalLogin.UserRefer)
-
-	if getUserErr != nil {
-		return nil, nil, getUserErr
-	}
-
-	return updateTokenPair(user)
 }
 
-func RefreshToken(request RefreshTokenRequest) (*models.Token, error) {
+func RefreshToken(request RefreshTokenRequest) (*RefreshTokenResponse, error) {
 	validationErr := auth.ValidateToken(request.RefreshToken)
 
 	if validationErr != nil {
@@ -88,7 +89,7 @@ func RefreshToken(request RefreshTokenRequest) (*models.Token, error) {
 		return nil, claimsErr
 	}
 
-	user, getUserErr := GetUserByUserName(claims["username"].(string))
+	user, getUserErr := GetUserByEmail(claims["email"].(string))
 
 	if getUserErr != nil {
 		return nil, getUserErr
@@ -100,19 +101,26 @@ func RefreshToken(request RefreshTokenRequest) (*models.Token, error) {
 		return nil, accessTokenErr
 	}
 
+	dbAccessToken, getDbAccessTokenErr := GetUserTokenByKind(user.Id, models.Access)
+
+	if getDbAccessTokenErr != nil {
+		return nil, getDbAccessTokenErr
+	}
+
 	accessToken := &models.Token{
+		Id:         dbAccessToken.Id,
 		TokenValue: accessTokenString,
 		Kind:       models.Access,
 		UserRefer:  user.Id,
 	}
 
-	_, saveAccessTokenErr := SaveToken(accessToken)
+	_, saveAccessTokenErr := UpdateToken(accessToken)
 
 	if saveAccessTokenErr != nil {
 		return nil, saveAccessTokenErr
 	}
 
-	return accessToken, nil
+	return &RefreshTokenResponse{Token: accessToken.TokenValue}, nil
 }
 
 func generateAndSaveTokenPair(user *models.User) (accessToken *models.Token, refreshToken *models.Token, err error) {
@@ -202,7 +210,6 @@ func updateTokenPair(user *models.User) (accessToken *models.Token, refreshToken
 }
 
 func validateGoogleToken(idToken string) error {
-
 	googleAuthRes, googleAuthReqErr := http.Get(fmt.Sprintf("https://www.googleapis.com/oauth2/v3/tokeninfo?id_token=%s", idToken))
 
 	if googleAuthReqErr != nil {

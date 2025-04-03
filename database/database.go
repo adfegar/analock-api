@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	createUsersTableQuery = "CREATE TABLE IF NOT EXISTS `user` (`id` integer, 'username' text, `role` integer" +
-		", PRIMARY KEY (`id`), UNIQUE (`username`));"
+	createUsersTableQuery = "CREATE TABLE IF NOT EXISTS `user` (`id` integer, `email` text, 'username' text, `role` integer" +
+		", PRIMARY KEY (`id`), UNIQUE (`email`));"
 	createTokensTableQuery = "CREATE TABLE IF NOT EXISTS `token` (`id` integer, `value` text, `kind` integer, `user_id` text," +
 		" PRIMARY KEY (`id`)," +
 		" UNIQUE (`user_id`, `kind`)," +

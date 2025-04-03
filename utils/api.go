@@ -30,7 +30,7 @@ func TranslateDbErrorToHttpError(err error) *models.HttpError {
 	case *models.DbCouldNotParseItemError:
 		httpError.Status = 500
 	case *models.DbItemAlreadyExistsError:
-		httpError.Status = 403
+		httpError.Status = 400
 	default:
 		httpError.Status = 500
 	}

@@ -35,7 +35,7 @@ func GenerateToken(user models.User, kind models.TokenKind) (string, error) {
 	}
 
 	claims["exp"] = expiration
-	claims["username"] = user.UserName
+	claims["email"] = user.Email
 
 	tokenString, err := token.SignedString(secretKey)
 
@@ -65,7 +65,7 @@ func ValidateToken(tokenString string) error {
 		return secretKey, nil
 	})
 
-	if !token.Valid {
+	if parseErr != nil || !token.Valid {
 		return parseErr
 	}
 

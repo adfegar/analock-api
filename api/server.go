@@ -26,7 +26,7 @@ func (server *APIServer) Run() error {
 		Debug:            false,
 	}).Handler(server.router)
 
-	server.router.Use( /*AuthMiddleware,*/ ValidatePathParams)
+	server.router.Use(AuthMiddleware, ValidatePathParams)
 
 	server.initRoutes()
 
