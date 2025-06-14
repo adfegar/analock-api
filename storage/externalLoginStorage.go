@@ -14,7 +14,8 @@ const (
 		", user_id) VALUES (?, ?, ?, ?);"
 	updateExternalLoginQuery = "UPDATE external_login SET provider = ?, provider_client_id = ?" +
 		", user_id = ? WHERE id = ?;"
-	deleteExternalLoginQuery = "DELETE FROM external_login WHERE id = ?;"
+	updateUserExternalLoginQuery = "UPDATE external_login SET provider_client_token = ? WHERE user_id = ?;"
+	deleteExternalLoginQuery     = "DELETE FROM external_login WHERE id = ?;"
 )
 
 type ExternalLoginStorage struct{}
@@ -109,6 +110,33 @@ func (externalLoginStorage *ExternalLoginStorage) Update(externalLogin interface
 	}
 
 	result, err := database.GetDatabaseInstance().GetConnection().Exec(updateExternalLoginQuery, dbExternalLogin.Provider, dbExternalLogin.ClientId,
+		dbExternalLogin.UserRefer)
+
+	if err != nil {
+		return err
+	}
+
+	affectedRows, errAffectedRows := result.RowsAffected()
+
+	if errAffectedRows != nil {
+		return errAffectedRows
+	}
+
+	if affectedRows == 0 {
+		return externalLoginNotFoundError
+	}
+
+	return nil
+}
+
+func (externalLoginStorage *ExternalLoginStorage) UpdateUserExternalLoginToken(externalLogin interface{}) error {
+	dbExternalLogin, ok := externalLogin.(*models.ExternalLogin)
+
+	if !ok {
+		return failedToParseUserError
+	}
+
+	result, err := database.GetDatabaseInstance().GetConnection().Exec(updateUserExternalLoginQuery, dbExternalLogin.ClientToken,
 		dbExternalLogin.UserRefer)
 
 	if err != nil {

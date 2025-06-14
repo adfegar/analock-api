@@ -9,6 +9,7 @@ import (
 
 const (
 	getBookActivityRegistrationByIdentifierQuery  = "SELECT arb.id, arb.internet_archive_id, ar.registration_date, ar.user_id FROM activity_registration_book arb INNER JOIN activity_registration ar ON (arb.registration_id = ar.id) WHERE arb.id = ?;"
+	getUserBookActivityRegistrationsQuery         = "SELECT arb.id, arb.internet_archive_id, ar.id, ar.registration_date, ar.user_id FROM activity_registration_book arb INNER JOIN activity_registration ar ON (arb.registration_id = ar.id) WHERE ar.user_id = ?;"
 	getIntervalUserBookActivityRegistrationsQuery = "SELECT arb.id, arb.internet_archive_id, ar.id, ar.registration_date, ar.user_id FROM activity_registration_book arb INNER JOIN activity_registration ar ON (arb.registration_id = ar.id) WHERE ar.user_id = ? AND ar.registration_date >= ? AND ar.registration_date <= ?;"
 	insertBookActivityRegistrationQuery           = "INSERT INTO activity_registration_book (internet_archive_id, registration_id) VALUES (?, ?);"
 	updateBookActivityRegistrationQuery           = "UPDATE activity_registration_book SET internet_archive_id = ? WHERE id = ?;"
@@ -48,8 +49,40 @@ func (bookActivityRegistrationStorage *BookActivityRegistrationStorage) Get(id u
 	return &bookActivityRegistration, nil
 }
 
+func (bookActivityRegistrationStorage *BookActivityRegistrationStorage) GetByUserId(userId uint) (interface{}, error) {
+	userBookActivityRegistrations := []*models.BookActivityRegistration{}
+	result, err := database.GetDatabaseInstance().GetConnection().Query(getUserBookActivityRegistrationsQuery, userId)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer result.Close()
+
+	for result.Next() {
+		scannedBookActivityRegistration, scanErr := bookActivityRegistrationStorage.Scan(result)
+
+		if scanErr != nil {
+			return nil, scanErr
+		}
+		bookActivityRegistration, ok := scannedBookActivityRegistration.(models.BookActivityRegistration)
+
+		if !ok {
+			return nil, failedToParseBookActivityRegistrationError
+		}
+
+		userBookActivityRegistrations = append(userBookActivityRegistrations, &bookActivityRegistration)
+	}
+
+	if userBookActivityRegistrations == nil {
+		return nil, bookActivityRegistrationNotFoundError
+	}
+
+	return userBookActivityRegistrations, nil
+}
+
 func (bookActivityRegistrationStorage *BookActivityRegistrationStorage) GetByUserIdAndTimeRange(userId uint, startTime int64, endTime int64) (interface{}, error) {
-	var userBookActivityRegistrations []*models.BookActivityRegistration
+	userBookActivityRegistrations := []*models.BookActivityRegistration{}
 	result, err := database.GetDatabaseInstance().GetConnection().Query(getIntervalUserBookActivityRegistrationsQuery, userId, startTime, endTime)
 
 	if err != nil {

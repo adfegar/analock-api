@@ -8,12 +8,13 @@ import (
 )
 
 const (
-	getTokenQuery        = "SELECT * FROM token where id = ?;"
-	getTokenByUserQuery  = "SELECT * FROM token where user_id = ?;"
-	getTokenByValueQuery = "SELECT * FROM token where value = ?;"
-	insertTokenQuery     = "INSERT INTO token (value, kind, user_id) VALUES (?, ?, ?);"
-	updateTokenQuery     = "UPDATE token SET value = ?, kind = ? WHERE id = ?;"
-	deleteTokenQuery     = "DELETE FROM token WHERE id = ?;"
+	getTokenQuery              = "SELECT * FROM token where id = ?;"
+	getTokenByUserQuery        = "SELECT * FROM token where user_id = ?;"
+	getTokenByValueQuery       = "SELECT * FROM token where value = ?;"
+	getTokenByUserAndKindQuery = "SELECT * FROM token where user_id = ? AND kind = ?;"
+	insertTokenQuery           = "INSERT INTO token (value, kind, user_id) VALUES (?, ?, ?);"
+	updateTokenQuery           = "UPDATE token SET value = ?, kind = ? WHERE id = ?;"
+	deleteTokenQuery           = "DELETE FROM token WHERE id = ?;"
 )
 
 type TokenStorage struct{}
@@ -83,6 +84,34 @@ func (tokenStorage *TokenStorage) GetByUserId(id uint) ([2]*models.Token, error)
 
 func (tokenStorage *TokenStorage) GetByValue(tokenValue string) (interface{}, error) {
 	result, err := database.GetDatabaseInstance().GetConnection().Query(getTokenByValueQuery, tokenValue)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer result.Close()
+
+	if !result.Next() {
+		return nil, tokenNotFoundError
+	}
+
+	scannedToken, scanErr := tokenStorage.Scan(result)
+
+	if scanErr != nil {
+		return nil, scanErr
+	}
+
+	token, ok := scannedToken.(*models.Token)
+
+	if !ok {
+		return nil, failedToParseTokenError
+	}
+
+	return token, nil
+}
+
+func (tokenStorage *TokenStorage) GetByUserAndKind(userId uint, tokenKind models.TokenKind) (interface{}, error) {
+	result, err := database.GetDatabaseInstance().GetConnection().Query(getTokenByUserAndKindQuery, userId, tokenKind)
 
 	if err != nil {
 		return nil, err

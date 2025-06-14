@@ -78,7 +78,7 @@ func (activityRegistrationStorage *ActivityRegistrationStorage) Update(activityR
 		return failedToParseActivityRegistrationError
 	}
 
-	result, err := database.GetDatabaseInstance().GetConnection().Exec(updateDiaryEntryQuery,
+	result, err := database.GetDatabaseInstance().GetConnection().Exec(updateActivityRegistrationQuery,
 		dbActivityRegistration.RegistrationDate,
 		dbActivityRegistration.Id)
 

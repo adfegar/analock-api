@@ -2,17 +2,18 @@ package storage
 
 import (
 	"database/sql"
+	"log"
 
 	"github.com/adfer-dev/analock-api/database"
 	"github.com/adfer-dev/analock-api/models"
 )
 
 const (
-	getUserQuery           = "SELECT * FROM user where id = ?;"
-	getUserByUserNameQuery = "SELECT * FROM user where username = ?;"
-	insertUserQuery        = "INSERT INTO user (username, role) VALUES (?, ?);"
-	updateUserQuery        = "UPDATE user SET username = ?, role = ? WHERE id = ?;"
-	deleteUserQuery        = "DELETE FROM user WHERE id = ?;"
+	getUserQuery            = "SELECT * FROM user where id = ?;"
+	getUserByUserEmailQuery = "SELECT * FROM user where email = ?;"
+	insertUserQuery         = "INSERT INTO user (email, username, role) VALUES (?, ?, ?);"
+	updateUserQuery         = "UPDATE user SET username = ?, role = ? WHERE id = ?;"
+	deleteUserQuery         = "DELETE FROM user WHERE id = ?;"
 )
 
 type UserStorage struct{}
@@ -48,8 +49,8 @@ func (userStorage *UserStorage) Get(id uint) (interface{}, error) {
 	return user, nil
 }
 
-func (userStorage *UserStorage) GetByUserName(userName string) (interface{}, error) {
-	result, err := database.GetDatabaseInstance().GetConnection().Query(getUserQuery, userName)
+func (userStorage *UserStorage) GetByEmail(email string) (interface{}, error) {
+	result, err := database.GetDatabaseInstance().GetConnection().Query(getUserByUserEmailQuery, email)
 
 	if err != nil {
 		return nil, err
@@ -83,7 +84,7 @@ func (userStorage *UserStorage) Create(user interface{}) error {
 	if !ok {
 		return failedToParseUserError
 	}
-
+	log.Println(dbUser)
 	user, getUserErr := userStorage.Get(dbUser.Id)
 	_, isNotFoundError := getUserErr.(*models.DbNotFoundError)
 
@@ -91,7 +92,7 @@ func (userStorage *UserStorage) Create(user interface{}) error {
 		return userAlreadyExistsError
 	}
 
-	result, err := database.GetDatabaseInstance().GetConnection().Exec(insertUserQuery, dbUser.UserName, dbUser.Role)
+	result, err := database.GetDatabaseInstance().GetConnection().Exec(insertUserQuery, dbUser.Email, dbUser.UserName, dbUser.Role)
 	if err != nil {
 		storageLogger.ErrorLogger.Printf("error when saving user: %s", err.Error())
 		return err
@@ -157,7 +158,7 @@ func (userStorage *UserStorage) Delete(id uint) error {
 func (userStorage *UserStorage) Scan(rows *sql.Rows) (interface{}, error) {
 	var user models.User
 
-	scanErr := rows.Scan(&user.Id, &user.UserName, &user.Role)
+	scanErr := rows.Scan(&user.Id, &user.Email, &user.UserName, &user.Role)
 
 	return &user, scanErr
 }
