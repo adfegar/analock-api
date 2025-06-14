@@ -43,10 +43,12 @@ jobs:
           password: ${{ secrets.DOCKERHUB_PASS }}
 
       - name: Build Docker image
-        run: docker build \
+        run: |
+          docker buildx build \
             --build-arg DB_URL="${{ secrets.DB_URL }}" \
             --build-arg DB_TOKEN="${{ secrets.DB_TOKEN }}" \
-            -t ${{ secrets.DOCKERHUB_USER }}/analock-api:latest .
+            -t ${{ secrets.DOCKERHUB_USER }}/analock-api:latest \
+            .
 
       - name: Push Docker image to Docker Hub
         run: docker push ${{ secrets.DOCKERHUB_USER }}/analock-api:latest
