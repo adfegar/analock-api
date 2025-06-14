@@ -8,6 +8,24 @@ import (
 	"github.com/joho/godotenv"
 )
 
+//	@title			Analock API
+//	@version		1.0
+//	@description	This is the API server for the Analock application.
+//	@termsOfService	http://swagger.io/terms/
+
+//	@contact.name	API Support
+//	@contact.url	http://www.swagger.io/support
+//	@contact.email	support@swagger.io
+
+//	@license.name	Apache 2.0
+//	@license.url	http://www.apache.org/licenses/LICENSE-2.0.html
+
+//	@BasePath					/api/v1
+//	@schemes					http https
+//	@securityDefinitions.apiKey	Bearer Token
+//	@in							header
+//	@name						Authorization
+
 var logger *utils.CustomLogger = utils.GetCustomLogger()
 
 func main() {

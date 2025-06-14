@@ -5,6 +5,18 @@ import (
 	"github.com/adfer-dev/analock-api/storage"
 )
 
+// Interface for DiaryEntryStorage
+type DiaryEntryStorageInterface interface {
+	Get(id uint) (interface{}, error)
+	GetByUserId(userId uint) (interface{}, error)
+	GetByUserIdAndDateInterval(userId uint, startDate int64, endDate int64) (interface{}, error)
+	Create(data interface{}) error
+	Update(data interface{}) error
+}
+
+// ActivityRegistrationStorageInterface is defined in activityRegistration.go
+// and is accessible throughout the 'services' package.
+
 type SaveDiaryEntryBody struct {
 	Title       string `json:"title" validate:"required"`
 	Content     string `json:"content" validate:"required"`
@@ -12,16 +24,27 @@ type SaveDiaryEntryBody struct {
 	UserRefer   uint   `json:"userId" validate:"required"`
 }
 
+// Added back UpdateDiaryEntryBody
 type UpdateDiaryEntryBody struct {
 	Title       string `json:"title" validate:"required"`
 	Content     string `json:"content" validate:"required"`
 	PublishDate int64  `json:"publishDate" validate:"required"`
 }
 
-var diaryEntryStorage = &storage.DiaryEntryStorage{}
-var activityRegistrationStorage = &storage.ActivityRegistrationStorage{}
+var diaryEntryStorage DiaryEntryStorageInterface = &storage.DiaryEntryStorage{}
 
-func GetDiaryEntryById(id uint) (*models.DiaryEntry, error) {
+type DiaryEntryService interface {
+	GetDiaryEntryById(id uint) (*models.DiaryEntry, error)
+	GetUserEntries(userId uint) ([]*models.DiaryEntry, error)
+	GetUserEntriesTimeRange(userId uint, startDate int64, endDate int64) ([]*models.DiaryEntry, error)
+	SaveDiaryEntry(diaryEntryBody *SaveDiaryEntryBody) (*models.DiaryEntry, error)
+	UpdateDiaryEntry(diaryEntryId uint, diaryEntryBody *UpdateDiaryEntryBody) (*models.DiaryEntry, error)
+	DeleteDiaryEntry(id uint) error
+}
+
+type DefaultDiaryEntryService struct{}
+
+func (defaultDiaryEntryService *DefaultDiaryEntryService) GetDiaryEntryById(id uint) (*models.DiaryEntry, error) {
 	diaryEntry, err := diaryEntryStorage.Get(id)
 
 	if err != nil {
@@ -31,17 +54,17 @@ func GetDiaryEntryById(id uint) (*models.DiaryEntry, error) {
 	return diaryEntry.(*models.DiaryEntry), nil
 }
 
-func GetUserEntries(userId uint) ([]*models.DiaryEntry, error) {
+func (defaultDiaryEntryService *DefaultDiaryEntryService) GetUserEntries(userId uint) ([]*models.DiaryEntry, error) {
+
 	diaryEntry, err := diaryEntryStorage.GetByUserId(userId)
 
 	if err != nil {
 		return nil, err
 	}
-
 	return diaryEntry.([]*models.DiaryEntry), nil
 }
 
-func GetUserEntriesTimeRange(userId uint, startDate int64, endDate int64) ([]*models.DiaryEntry, error) {
+func (defaultDiaryEntryService *DefaultDiaryEntryService) GetUserEntriesTimeRange(userId uint, startDate int64, endDate int64) ([]*models.DiaryEntry, error) {
 	diaryEntry, err := diaryEntryStorage.GetByUserIdAndDateInterval(userId, startDate, endDate)
 
 	if err != nil {
@@ -51,7 +74,7 @@ func GetUserEntriesTimeRange(userId uint, startDate int64, endDate int64) ([]*mo
 	return diaryEntry.([]*models.DiaryEntry), nil
 }
 
-func SaveDiaryEntry(diaryEntryBody *SaveDiaryEntryBody) (*models.DiaryEntry, error) {
+func (defaultDiaryEntryService *DefaultDiaryEntryService) SaveDiaryEntry(diaryEntryBody *SaveDiaryEntryBody) (*models.DiaryEntry, error) {
 	dbActivityRegistration := &models.ActivityRegistration{
 		RegistrationDate: diaryEntryBody.PublishDate,
 		UserRefer:        diaryEntryBody.UserRefer,
@@ -77,9 +100,8 @@ func SaveDiaryEntry(diaryEntryBody *SaveDiaryEntryBody) (*models.DiaryEntry, err
 	return dbEntry, nil
 }
 
-func UpdateDiaryEntry(diaryEntryId uint, diaryEntryBody *UpdateDiaryEntryBody) (*models.DiaryEntry, error) {
-
-	storedDiaryEntry, getDiaryEntryError := GetDiaryEntryById(diaryEntryId)
+func (defaultDiaryEntryService *DefaultDiaryEntryService) UpdateDiaryEntry(diaryEntryId uint, diaryEntryBody *UpdateDiaryEntryBody) (*models.DiaryEntry, error) {
+	storedDiaryEntry, getDiaryEntryError := defaultDiaryEntryService.GetDiaryEntryById(diaryEntryId)
 
 	if getDiaryEntryError != nil {
 		return nil, getDiaryEntryError
@@ -88,6 +110,7 @@ func UpdateDiaryEntry(diaryEntryId uint, diaryEntryBody *UpdateDiaryEntryBody) (
 	dbRegistration := &models.ActivityRegistration{
 		Id:               storedDiaryEntry.Registration.Id,
 		RegistrationDate: diaryEntryBody.PublishDate,
+		UserRefer:        storedDiaryEntry.Registration.UserRefer,
 	}
 	updateRegistrationErr := activityRegistrationStorage.Update(dbRegistration)
 
@@ -96,14 +119,10 @@ func UpdateDiaryEntry(diaryEntryId uint, diaryEntryBody *UpdateDiaryEntryBody) (
 	}
 
 	updatedDiaryEntry := &models.DiaryEntry{
-		Id:      diaryEntryId,
-		Title:   diaryEntryBody.Title,
-		Content: diaryEntryBody.Content,
-		Registration: models.ActivityRegistration{
-			Id:               dbRegistration.Id,
-			RegistrationDate: dbRegistration.RegistrationDate,
-			UserRefer:        storedDiaryEntry.Registration.UserRefer,
-		},
+		Id:           diaryEntryId,
+		Title:        diaryEntryBody.Title,
+		Content:      diaryEntryBody.Content,
+		Registration: *dbRegistration,
 	}
 	err := diaryEntryStorage.Update(updatedDiaryEntry)
 
@@ -114,8 +133,8 @@ func UpdateDiaryEntry(diaryEntryId uint, diaryEntryBody *UpdateDiaryEntryBody) (
 	return updatedDiaryEntry, nil
 }
 
-func DeleteDiaryEntry(id uint) error {
-	diaryEntry, err := GetDiaryEntryById(id)
+func (defaultDiaryEntryService *DefaultDiaryEntryService) DeleteDiaryEntry(id uint) error {
+	diaryEntry, err := defaultDiaryEntryService.GetDiaryEntryById(id)
 
 	if err != nil {
 		return err

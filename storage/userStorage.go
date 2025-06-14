@@ -2,6 +2,7 @@ package storage
 
 import (
 	"database/sql"
+	"log"
 
 	"github.com/adfer-dev/analock-api/database"
 	"github.com/adfer-dev/analock-api/models"
@@ -10,7 +11,7 @@ import (
 const (
 	getUserQuery            = "SELECT * FROM user where id = ?;"
 	getUserByUserEmailQuery = "SELECT * FROM user where email = ?;"
-	insertUserQuery         = "INSERT INTO user (email, username, role) VALUES (?, ?);"
+	insertUserQuery         = "INSERT INTO user (email, username, role) VALUES (?, ?, ?);"
 	updateUserQuery         = "UPDATE user SET username = ?, role = ? WHERE id = ?;"
 	deleteUserQuery         = "DELETE FROM user WHERE id = ?;"
 )
@@ -83,7 +84,7 @@ func (userStorage *UserStorage) Create(user interface{}) error {
 	if !ok {
 		return failedToParseUserError
 	}
-
+	log.Println(dbUser)
 	user, getUserErr := userStorage.Get(dbUser.Id)
 	_, isNotFoundError := getUserErr.(*models.DbNotFoundError)
 

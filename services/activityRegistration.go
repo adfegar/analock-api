@@ -5,6 +5,44 @@ import (
 	"github.com/adfer-dev/analock-api/storage"
 )
 
+// Storage interfaces
+type BookActivityRegistrationStorageInterface interface {
+	GetByUserId(userId uint) (interface{}, error)
+	GetByUserIdAndTimeRange(userId uint, startTime int64, endTime int64) (interface{}, error)
+	Create(data interface{}) error
+}
+
+type GameActivityRegistrationStorageInterface interface {
+	GetByUserId(userId uint) (interface{}, error)
+	GetByUserIdAndInterval(userId uint, startDate int64, endDate int64) (interface{}, error)
+	Create(data interface{}) error
+}
+
+type ActivityRegistrationStorageInterface interface {
+	Create(data interface{}) error
+	Update(data interface{}) error
+	Delete(id uint) error
+}
+
+// BookActicityRegistrationService interface and implementation
+type BookActivityRegistrationService interface {
+	GetUserBookActivityRegistrations(userId uint) ([]*models.BookActivityRegistration, error)
+	GetUserBookActivityRegistrationsTimeRange(userId uint, startTime int64, endTime int64) ([]*models.BookActivityRegistration, error)
+	CreateBookActivityRegistration(addRegistrationBody *AddBookActivityRegistrationBody) (*models.BookActivityRegistration, error)
+}
+
+type DefaultBookActivityRegistrationService struct{}
+
+// GameActicityRegistrationService interface and implementation
+type GameActivityRegistrationService interface {
+	GetUserGameActivityRegistrations(userId uint) ([]*models.GameActivityRegistration, error)
+	GetUserGameActivityRegistrationsTimeRange(userId uint, startDate int64, endDate int64) ([]*models.GameActivityRegistration, error)
+	CreateGameActivityRegistration(addRegistrationBody *AddGameActivityRegistrationBody) (*models.GameActivityRegistration, error)
+}
+
+type DefaultGameActivityRegistrationService struct{}
+
+// Request bodies structs
 type AddBookActivityRegistrationBody struct {
 	InternetArchiveId string `json:"internetArchiveId" validate:"required"`
 	RegistrationDate  int64  `json:"registrationDate" validate:"required"`
@@ -17,10 +55,31 @@ type AddGameActivityRegistrationBody struct {
 	UserRefer        uint   `json:"userId" validate:"required"`
 }
 
-var bookActivityRegistrationStorage = &storage.BookActivityRegistrationStorage{}
-var gameActivityRegistrationStorage = &storage.GameActivityRegistrationStorage{}
+var bookActivityRegistrationStorage BookActivityRegistrationStorageInterface = &storage.BookActivityRegistrationStorage{}
+var gameActivityRegistrationStorage GameActivityRegistrationStorageInterface = &storage.GameActivityRegistrationStorage{}
+var activityRegistrationStorage ActivityRegistrationStorageInterface = &storage.ActivityRegistrationStorage{}
 
-func GetUserBookActivityRegistrationsTimeRange(userId uint, startTime int64, endTime int64) ([]*models.BookActivityRegistration, error) {
+func (defaultBookActivityRegistrationService *DefaultBookActivityRegistrationService) GetUserBookActivityRegistrations(userId uint) ([]*models.BookActivityRegistration, error) {
+	dbUserRegistrations, err := bookActivityRegistrationStorage.GetByUserId(userId)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return dbUserRegistrations.([]*models.BookActivityRegistration), nil
+}
+
+func (defaultGameActivityRegistrationService *DefaultGameActivityRegistrationService) GetUserGameActivityRegistrations(userId uint) ([]*models.GameActivityRegistration, error) {
+	dbUserRegistrations, err := gameActivityRegistrationStorage.GetByUserId(userId)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return dbUserRegistrations.([]*models.GameActivityRegistration), nil
+}
+
+func (defaultBookActivityRegistrationService *DefaultBookActivityRegistrationService) GetUserBookActivityRegistrationsTimeRange(userId uint, startTime int64, endTime int64) ([]*models.BookActivityRegistration, error) {
 	dbUserRegistrations, err := bookActivityRegistrationStorage.GetByUserIdAndTimeRange(userId, startTime, endTime)
 
 	if err != nil {
@@ -30,7 +89,7 @@ func GetUserBookActivityRegistrationsTimeRange(userId uint, startTime int64, end
 	return dbUserRegistrations.([]*models.BookActivityRegistration), nil
 }
 
-func GetUserGameActivityRegistrationsTimeRange(userId uint, startDate int64, endDate int64) ([]*models.GameActivityRegistration, error) {
+func (defaultGameActivityRegistrationService *DefaultGameActivityRegistrationService) GetUserGameActivityRegistrationsTimeRange(userId uint, startDate int64, endDate int64) ([]*models.GameActivityRegistration, error) {
 	dbUserRegistrations, err := gameActivityRegistrationStorage.GetByUserIdAndInterval(userId, startDate, endDate)
 
 	if err != nil {
@@ -40,7 +99,7 @@ func GetUserGameActivityRegistrationsTimeRange(userId uint, startDate int64, end
 	return dbUserRegistrations.([]*models.GameActivityRegistration), nil
 }
 
-func CreateBookActivityRegistration(addRegistrationBody *AddBookActivityRegistrationBody) (*models.BookActivityRegistration, error) {
+func (defaultBookActivityRegistrationService *DefaultBookActivityRegistrationService) CreateBookActivityRegistration(addRegistrationBody *AddBookActivityRegistrationBody) (*models.BookActivityRegistration, error) {
 	dbActivityRegistration := &models.ActivityRegistration{
 		RegistrationDate: addRegistrationBody.RegistrationDate,
 		UserRefer:        addRegistrationBody.UserRefer,
@@ -65,7 +124,7 @@ func CreateBookActivityRegistration(addRegistrationBody *AddBookActivityRegistra
 	return dbBookActivityRegistration, nil
 }
 
-func CreateGameActivityRegistration(addRegistrationBody *AddGameActivityRegistrationBody) (*models.GameActivityRegistration, error) {
+func (defaultGameActivityRegistrationService *DefaultGameActivityRegistrationService) CreateGameActivityRegistration(addRegistrationBody *AddGameActivityRegistrationBody) (*models.GameActivityRegistration, error) {
 
 	dbActivityRegistration := &models.ActivityRegistration{
 		RegistrationDate: addRegistrationBody.RegistrationDate,

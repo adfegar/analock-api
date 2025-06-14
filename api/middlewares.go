@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/adfer-dev/analock-api/auth"
+	"github.com/adfer-dev/analock-api/constants"
 	"github.com/adfer-dev/analock-api/models"
 	"github.com/adfer-dev/analock-api/services"
 	"github.com/adfer-dev/analock-api/utils"
@@ -15,10 +16,15 @@ import (
 	"github.com/gorilla/mux"
 )
 
+var tokenService services.TokenService = &services.DefaultTokenService{}
+var userService services.UserService = &services.DefaultUserService{}
+var tokenManager auth.TokenManager = auth.NewDefaultTokenManager()
+var diaryEntryService services.DiaryEntryService = &services.DefaultDiaryEntryService{}
+
 // AuthMiddleware is a middleware to check if each request is correctly authorized.
 // Returs the next http handler to be processed.
 func AuthMiddleware(next http.Handler) http.Handler {
-	authEndpoints := regexp.MustCompile(`/api/v1/auth/*`)
+	authEndpoints := regexp.MustCompile(constants.ApiV1UrlRoot + `/(auth|swagger)/*`)
 
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		//If the endpoint is not allowed, check its auth token.
@@ -66,28 +72,50 @@ func ValidatePathParams(next http.Handler) http.Handler {
 	})
 }
 
-// CheckUserOwnershipMiddleware checks if the user has ownership on the resource it is trying to edit or delete.
+// checkUserOwnershipMiddleware checks if the user has ownership on the resource it is trying to edit or delete.
 // Returs the next http handler to be processed.
-func CheckUserOwnershipMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		/*
-			if req.Method == "PUT" || req.Method == "DELETE" {
+func checkUserOwnershipMiddleware(req *http.Request) error {
+	endpointsToCheck := regexp.MustCompile(
+		constants.ApiV1UrlRoot +
+			`(` + constants.ApiUrlDiaryEntries +
+			`|` + constants.ApiUrlBookRegistrations +
+			`|` + constants.ApiUrlGameRegistrations +
+			`)/*`)
 
-				itemId, _ := strconv.Atoi(mux.Vars(req)["id"])
-				tokenValue := req.Header.Get("Authorization")[7:]
-				token, err := services.GetTokenByValue(tokenValue)
+	if endpointsToCheck.MatchString(req.URL.Path) {
+		itemId, _ := strconv.Atoi(mux.Vars(req)["id"])
+		tokenValue := req.Header.Get("Authorization")[7:]
+		tokenClaims, claimsErr := tokenManager.GetClaims(tokenValue)
 
-				if err != nil {
-					utils.WriteJSON(res, 500,
-						models.HttpError{Status: 500, Description: err.Error()})
-				} else {
-					//TODO: Implement ownership check
-				}
+		if claimsErr != nil {
+			return claimsErr
+		}
+		tokenEmail := tokenClaims["email"].(string)
+		if req.Method == http.MethodGet {
+			var ownershipErr error
+
+			if strings.Contains(req.URL.Path, "user") {
+				ownershipErr = checkUserEmailOwnership(uint(itemId), tokenEmail)
 			} else {
-				next.ServeHTTP(res, req)
+				ownershipErr = checkUserOwnershipFromDiaryEntryId(uint(itemId), tokenEmail)
 			}
-		*/
-	})
+
+			if ownershipErr != nil {
+				return ownershipErr
+			}
+
+		} else if req.Method == http.MethodPut {
+			if strings.Contains(req.URL.Path, constants.ApiUrlDiaryEntries) {
+				ownershipErr := checkUserOwnershipFromDiaryEntryId(uint(itemId), tokenEmail)
+
+				if ownershipErr != nil {
+					return ownershipErr
+				}
+			}
+		}
+	}
+
+	return nil
 }
 
 // AUX FUNCTIONS
@@ -110,7 +138,7 @@ func checkAuth(req *http.Request) error {
 	tokenString := fullToken[7:]
 
 	//Validate token
-	if err := auth.ValidateToken(tokenString); err != nil {
+	if err := tokenManager.ValidateToken(tokenString); err != nil {
 		validationErr, ok := err.(*jwt.ValidationError)
 		if ok && validationErr.Errors == jwt.ValidationErrorExpired {
 			return errors.New("token expired. Please, get a new one at /auth/refresh-token")
@@ -120,17 +148,17 @@ func checkAuth(req *http.Request) error {
 	}
 
 	//Then check if token is in the database
-	if _, tokenNotFoundErr := services.GetTokenByValue(tokenString); tokenNotFoundErr != nil {
+	if _, tokenNotFoundErr := tokenService.GetTokenByValue(tokenString); tokenNotFoundErr != nil {
 		return errors.New("token revoked")
 	}
 
-	claims, claimsErr := auth.GetClaims(tokenString)
+	claims, claimsErr := tokenManager.GetClaims(tokenString)
 
 	if claimsErr != nil {
 		return claimsErr
 	}
 
-	user, _ := services.GetUserByEmail(claims["email"].(string))
+	user, _ := userService.GetUserByEmail(claims["email"].(string))
 	// user-accessible endpoints
 	userDiaryEntryEndpoints := regexp.MustCompile(`/api/v1/diaryEntries/*`)
 	userActivityRegistrationEndpoints := regexp.MustCompile(`/api/v1/activityRegistrations/*`)
@@ -141,4 +169,29 @@ func checkAuth(req *http.Request) error {
 	}
 
 	return nil
+}
+
+// Check if a user's email ,identified by the id passed as parameter, corresponds to the email contained in token claims.
+func checkUserEmailOwnership(userId uint, tokenEmail string) error {
+	entryUser, getUserErr := userService.GetUserById(userId)
+
+	if getUserErr != nil {
+		return getUserErr
+	}
+
+	if tokenEmail != entryUser.Email {
+		return errors.New(constants.ErrorUnauthorizedOperation)
+	}
+	return nil
+}
+
+// Checks if user has ownership of a diary entry, knowing the entry id
+func checkUserOwnershipFromDiaryEntryId(itemId uint, tokenEmail string) error {
+	diaryEntry, getEntryError := diaryEntryService.GetDiaryEntryById(uint(itemId))
+
+	if getEntryError != nil {
+		return getEntryError
+	}
+
+	return checkUserEmailOwnership(diaryEntry.Registration.UserRefer, tokenEmail)
 }

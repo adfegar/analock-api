@@ -8,11 +8,12 @@ import (
 )
 
 const (
-	getGameActivityRegistrationByIdentifierQuery = "SELECT arg.id, arb.game_name, ar.id, ar.registration_date, ar.user_id FROM activity_registration_game arg INNER JOIN activity_registration ar ON (arg.registration_id = ar.id) WHERE arg.id = ?;"
-	getUserGameActivityRegistrationsQuery        = "SELECT arg.id, arg.game_name, ar.id, ar.registration_date, ar.user_id FROM activity_registration_game arg INNER JOIN activity_registration ar ON (arg.registration_id = ar.id) WHERE ar.user_id = ? AND ar.registration_date >= ? AND ar.registration_date <= ?;"
-	insertGameActivityRegistrationQuery          = "INSERT INTO activity_registration_game (game_name, registration_id) VALUES (?, ?);"
-	updateGameActivityRegistrationQuery          = "UPDATE activity_registration_game SET game_name = ? WHERE id = ?;"
-	deleteGameActivityRegistrationQuery          = "DELETE FROM activity_registration_game WHERE id = ?;"
+	getGameActivityRegistrationByIdentifierQuery    = "SELECT arg.id, arb.game_name, ar.id, ar.registration_date, ar.user_id FROM activity_registration_game arg INNER JOIN activity_registration ar ON (arg.registration_id = ar.id) WHERE arg.id = ?;"
+	getUserGameActivityRegistrationsQuery           = "SELECT arg.id, arg.game_name, ar.id, ar.registration_date, ar.user_id FROM activity_registration_game arg INNER JOIN activity_registration ar ON (arg.registration_id = ar.id) WHERE ar.user_id = ?;"
+	getUserGameActivityRegistrationsByIntervalQuery = "SELECT arg.id, arg.game_name, ar.id, ar.registration_date, ar.user_id FROM activity_registration_game arg INNER JOIN activity_registration ar ON (arg.registration_id = ar.id) WHERE ar.user_id = ? AND ar.registration_date >= ? AND ar.registration_date <= ?;"
+	insertGameActivityRegistrationQuery             = "INSERT INTO activity_registration_game (game_name, registration_id) VALUES (?, ?);"
+	updateGameActivityRegistrationQuery             = "UPDATE activity_registration_game SET game_name = ? WHERE id = ?;"
+	deleteGameActivityRegistrationQuery             = "DELETE FROM activity_registration_game WHERE id = ?;"
 )
 
 type GameActivityRegistrationStorage struct{}
@@ -48,9 +49,41 @@ func (gameActivityRegistrationStorage *GameActivityRegistrationStorage) Get(id u
 	return &gameActivityRegistration, nil
 }
 
+func (gameActivityRegistrationStorage *GameActivityRegistrationStorage) GetByUserId(userId uint) (interface{}, error) {
+	userGameActivityRegistrations := []*models.GameActivityRegistration{}
+	result, err := database.GetDatabaseInstance().GetConnection().Query(getUserGameActivityRegistrationsQuery, userId)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer result.Close()
+
+	for result.Next() {
+		scannedGameActivityRegistration, scanErr := gameActivityRegistrationStorage.Scan(result)
+
+		if scanErr != nil {
+			return nil, scanErr
+		}
+		gameActivityRegistration, ok := scannedGameActivityRegistration.(models.GameActivityRegistration)
+
+		if !ok {
+			return nil, failedToParseGameActivityRegistrationError
+		}
+
+		userGameActivityRegistrations = append(userGameActivityRegistrations, &gameActivityRegistration)
+	}
+
+	if userGameActivityRegistrations == nil {
+		return nil, bookActivityRegistrationNotFoundError
+	}
+
+	return userGameActivityRegistrations, nil
+}
+
 func (gameActivityRegistrationStorage *GameActivityRegistrationStorage) GetByUserIdAndInterval(userId uint, startDate int64, endDate int64) (interface{}, error) {
-	var userGameActivityRegistrations []*models.GameActivityRegistration
-	result, err := database.GetDatabaseInstance().GetConnection().Query(getUserGameActivityRegistrationsQuery, userId, startDate, endDate)
+	userGameActivityRegistrations := []*models.GameActivityRegistration{}
+	result, err := database.GetDatabaseInstance().GetConnection().Query(getUserGameActivityRegistrationsByIntervalQuery, userId, startDate, endDate)
 
 	if err != nil {
 		return nil, err
