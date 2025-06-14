@@ -8,49 +8,78 @@ import (
 type TokenBody struct {
 	TokenValue string           `json:"token" validate:"required,jwt"`
 	UserRefer  uint             `json:"user_id" validate:"required,number"`
-	Kind       models.TokenKind `validate:"required,number"`
+	Kind       models.TokenKind `json:"kind" validate:"required,number"`
 }
 
-var tokenStorage *storage.TokenStorage = &storage.TokenStorage{}
+var tokenStorage storage.TokenStorageInterface = &storage.TokenStorage{}
 
-func GetTokenById(id uint) (*models.Token, error) {
+// TokenService defines all operations for the token service.
+type TokenService interface {
+	GetTokenById(id uint) (*models.Token, error)
+	GetTokenByValue(tokenValue string) (*models.Token, error)
+	GetUserTokenByKind(userId uint, kind models.TokenKind) (*models.Token, error)
+	GetUserTokenPair(userId uint) ([2]*models.Token, error)
+	SaveToken(tokenBody *models.Token) (*models.Token, error)
+	UpdateToken(tokenBody *models.Token) (*models.Token, error)
+	DeleteToken(id uint) error
+}
+
+// TokenServiceImpl is the concrete implementation of TokenService.
+type TokenServiceImpl struct{}
+
+// NewTokenServiceImpl creates a new DefaultTokenService.
+func NewTokenServiceImpl() *TokenServiceImpl {
+	return &TokenServiceImpl{}
+}
+
+func (tokenService *TokenServiceImpl) GetTokenById(id uint) (*models.Token, error) {
 	token, err := tokenStorage.Get(id)
-
-	return token.(*models.Token), err
+	if err != nil {
+		return nil, err
+	}
+	return token.(*models.Token), nil
 }
 
-func GetTokenByValue(tokenValue string) (*models.Token, error) {
+func (tokenService *TokenServiceImpl) GetTokenByValue(tokenValue string) (*models.Token, error) {
 	token, err := tokenStorage.GetByValue(tokenValue)
-
-	return token.(*models.Token), err
+	if err != nil {
+		return nil, err
+	}
+	return token.(*models.Token), nil
 }
 
-func GetUserTokenPair(userId uint) ([2]*models.Token, error) {
+func (tokenService *TokenServiceImpl) GetUserTokenByKind(userId uint, kind models.TokenKind) (*models.Token, error) {
+	token, err := tokenStorage.GetByUserAndKind(userId, kind)
+	if err != nil {
+		return nil, err
+	}
+	return token.(*models.Token), nil
+}
+
+func (tokenService *TokenServiceImpl) GetUserTokenPair(userId uint) ([2]*models.Token, error) {
 	tokenPair, err := tokenStorage.GetByUserId(userId)
-
-	return tokenPair, err
+	if err != nil {
+		return [2]*models.Token{}, err
+	}
+	return tokenPair, nil
 }
 
-func SaveToken(tokenBody *models.Token) (*models.Token, error) {
+func (tokenService *TokenServiceImpl) SaveToken(tokenBody *models.Token) (*models.Token, error) {
 	err := tokenStorage.Create(tokenBody)
-
 	if err != nil {
 		return nil, err
 	}
-
 	return tokenBody, nil
 }
 
-func UpdateToken(tokenBody *models.Token) (*models.Token, error) {
+func (tokenService *TokenServiceImpl) UpdateToken(tokenBody *models.Token) (*models.Token, error) {
 	err := tokenStorage.Update(tokenBody)
-
 	if err != nil {
 		return nil, err
 	}
-
 	return tokenBody, nil
 }
 
-func DeleteToken(id uint) error {
+func (tokenService *TokenServiceImpl) DeleteToken(id uint) error {
 	return tokenStorage.Delete(id)
 }

@@ -18,10 +18,20 @@ type UpdateDiaryEntryBody struct {
 	PublishDate int64  `json:"publishDate" validate:"required"`
 }
 
-var diaryEntryStorage = &storage.DiaryEntryStorage{}
-var activityRegistrationStorage = &storage.ActivityRegistrationStorage{}
+var diaryEntryStorage storage.DiaryEntryStorageInterface = &storage.DiaryEntryStorage{}
 
-func GetDiaryEntryById(id uint) (*models.DiaryEntry, error) {
+type DiaryEntryService interface {
+	GetDiaryEntryById(id uint) (*models.DiaryEntry, error)
+	GetUserEntries(userId uint) ([]*models.DiaryEntry, error)
+	GetUserEntriesTimeRange(userId uint, startDate int64, endDate int64) ([]*models.DiaryEntry, error)
+	SaveDiaryEntry(diaryEntryBody *SaveDiaryEntryBody) (*models.DiaryEntry, error)
+	UpdateDiaryEntry(diaryEntryId uint, diaryEntryBody *UpdateDiaryEntryBody) (*models.DiaryEntry, error)
+	DeleteDiaryEntry(id uint) error
+}
+
+type DefaultDiaryEntryService struct{}
+
+func (defaultDiaryEntryService *DefaultDiaryEntryService) GetDiaryEntryById(id uint) (*models.DiaryEntry, error) {
 	diaryEntry, err := diaryEntryStorage.Get(id)
 
 	if err != nil {
@@ -31,8 +41,18 @@ func GetDiaryEntryById(id uint) (*models.DiaryEntry, error) {
 	return diaryEntry.(*models.DiaryEntry), nil
 }
 
-func GetUserEntries(userId uint) ([]*models.DiaryEntry, error) {
+func (defaultDiaryEntryService *DefaultDiaryEntryService) GetUserEntries(userId uint) ([]*models.DiaryEntry, error) {
+
 	diaryEntry, err := diaryEntryStorage.GetByUserId(userId)
+
+	if err != nil {
+		return nil, err
+	}
+	return diaryEntry.([]*models.DiaryEntry), nil
+}
+
+func (defaultDiaryEntryService *DefaultDiaryEntryService) GetUserEntriesTimeRange(userId uint, startDate int64, endDate int64) ([]*models.DiaryEntry, error) {
+	diaryEntry, err := diaryEntryStorage.GetByUserIdAndDateInterval(userId, startDate, endDate)
 
 	if err != nil {
 		return nil, err
@@ -41,7 +61,7 @@ func GetUserEntries(userId uint) ([]*models.DiaryEntry, error) {
 	return diaryEntry.([]*models.DiaryEntry), nil
 }
 
-func SaveDiaryEntry(diaryEntryBody *SaveDiaryEntryBody) (*models.DiaryEntry, error) {
+func (defaultDiaryEntryService *DefaultDiaryEntryService) SaveDiaryEntry(diaryEntryBody *SaveDiaryEntryBody) (*models.DiaryEntry, error) {
 	dbActivityRegistration := &models.ActivityRegistration{
 		RegistrationDate: diaryEntryBody.PublishDate,
 		UserRefer:        diaryEntryBody.UserRefer,
@@ -67,33 +87,41 @@ func SaveDiaryEntry(diaryEntryBody *SaveDiaryEntryBody) (*models.DiaryEntry, err
 	return dbEntry, nil
 }
 
-func UpdateDiaryEntry(diaryEntryId uint, diaryEntryBody *UpdateDiaryEntryBody) (*models.DiaryEntry, error) {
-	dbRegistration := &models.ActivityRegistration{
-		RegistrationDate: diaryEntryBody.PublishDate,
+func (defaultDiaryEntryService *DefaultDiaryEntryService) UpdateDiaryEntry(diaryEntryId uint, diaryEntryBody *UpdateDiaryEntryBody) (*models.DiaryEntry, error) {
+	storedDiaryEntry, getDiaryEntryError := defaultDiaryEntryService.GetDiaryEntryById(diaryEntryId)
+
+	if getDiaryEntryError != nil {
+		return nil, getDiaryEntryError
 	}
 
+	dbRegistration := &models.ActivityRegistration{
+		Id:               storedDiaryEntry.Registration.Id,
+		RegistrationDate: diaryEntryBody.PublishDate,
+		UserRefer:        storedDiaryEntry.Registration.UserRefer,
+	}
 	updateRegistrationErr := activityRegistrationStorage.Update(dbRegistration)
 
 	if updateRegistrationErr != nil {
 		return nil, updateRegistrationErr
 	}
 
-	dbEntry := &models.DiaryEntry{
-		Id:      diaryEntryId,
-		Title:   diaryEntryBody.Title,
-		Content: diaryEntryBody.Content,
+	updatedDiaryEntry := &models.DiaryEntry{
+		Id:           diaryEntryId,
+		Title:        diaryEntryBody.Title,
+		Content:      diaryEntryBody.Content,
+		Registration: *dbRegistration,
 	}
-	err := diaryEntryStorage.Update(dbEntry)
+	err := diaryEntryStorage.Update(updatedDiaryEntry)
 
 	if err != nil {
 		return nil, err
 	}
 
-	return dbEntry, nil
+	return updatedDiaryEntry, nil
 }
 
-func DeleteDiaryEntry(id uint) error {
-	diaryEntry, err := GetDiaryEntryById(id)
+func (defaultDiaryEntryService *DefaultDiaryEntryService) DeleteDiaryEntry(id uint) error {
+	diaryEntry, err := defaultDiaryEntryService.GetDiaryEntryById(id)
 
 	if err != nil {
 		return err

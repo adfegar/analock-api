@@ -1,14 +1,25 @@
-FROM golang:alpine
+FROM golang:bookworm
+
+ARG DB_URL
+ARG DB_TOKEN
 
 LABEL maintainer="adferdev"
 
-RUN apk update && apk add --no-cache git && apk add --no-cach bash && apk add build-base
+RUN apt-get update && apt-get install -y \
+    git \
+    build-essential \
+    pkg-config
 
 RUN mkdir /app
 
 WORKDIR /app
 
 COPY . .
+
+RUN echo "TURSO_DB_URL=$DB_URL" > .env && \
+    echo "TURSO_DB_TOKEN=$DB_TOKEN" >> .env \
+    echo "API_ENVIRONMENT=production" >> .env \
+    echo "API_URL_HOST=analock" >> .env
 
 RUN go get -d -v ./...
 

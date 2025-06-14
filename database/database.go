@@ -2,14 +2,16 @@ package database
 
 import (
 	"database/sql"
+	"fmt"
+	"os"
 
 	"github.com/adfer-dev/analock-api/utils"
 	_ "github.com/tursodatabase/go-libsql"
 )
 
 const (
-	createUsersTableQuery = "CREATE TABLE IF NOT EXISTS `user` (`id` integer, 'username' text, `role` integer" +
-		", PRIMARY KEY (`id`), UNIQUE (`username`));"
+	createUsersTableQuery = "CREATE TABLE IF NOT EXISTS `user` (`id` integer, `email` text, 'username' text, `role` integer" +
+		", PRIMARY KEY (`id`), UNIQUE (`email`));"
 	createTokensTableQuery = "CREATE TABLE IF NOT EXISTS `token` (`id` integer, `value` text, `kind` integer, `user_id` text," +
 		" PRIMARY KEY (`id`)," +
 		" UNIQUE (`user_id`, `kind`)," +
@@ -55,10 +57,10 @@ var logger *utils.CustomLogger = utils.GetCustomLogger()
 func GetDatabaseInstance() *Database {
 
 	if connectionInstance == nil {
-		db, dbErr := sql.Open("libsql", "http://localhost:8080")
+		db, dbErr := sql.Open("libsql", fmt.Sprintf("%s?authToken=%s", os.Getenv("TURSO_DB_URL"), os.Getenv("TURSO_DB_TOKEN")))
 
 		if dbErr != nil {
-			logger.ErrorLogger.Println()
+			logger.ErrorLogger.Println(dbErr.Error())
 		}
 
 		if connErr := db.Ping(); connErr != nil {

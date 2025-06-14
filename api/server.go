@@ -4,9 +4,14 @@ import (
 	"fmt"
 	"net/http"
 
+	"os"
+
+	"github.com/adfer-dev/analock-api/constants"
+	"github.com/adfer-dev/analock-api/docs"
 	"github.com/adfer-dev/analock-api/handlers"
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
+	httpSwagger "github.com/swaggo/http-swagger"
 )
 
 type APIServer struct {
@@ -17,6 +22,14 @@ type APIServer struct {
 func (server *APIServer) Run() error {
 	server.router = mux.NewRouter()
 
+	// set swagger host from environment
+	environment := os.Getenv("API_ENVIRONMENT")
+	if environment != "local" {
+		docs.SwaggerInfo.Host = os.Getenv("API_URL_HOST")
+	} else {
+		docs.SwaggerInfo.Host = fmt.Sprintf("%s:%d", "localhost", server.Port)
+	}
+
 	corsHandler := cors.New(cors.Options{
 		AllowedOrigins:   []string{"*"},
 		AllowCredentials: true,
@@ -26,7 +39,15 @@ func (server *APIServer) Run() error {
 		Debug:            false,
 	}).Handler(server.router)
 
-	server.router.Use( /*AuthMiddleware,*/ ValidatePathParams)
+	server.router.Use(AuthMiddleware, ValidatePathParams)
+
+	// Swagger documentation
+	server.router.PathPrefix(constants.ApiV1UrlRoot + "/swagger/").Handler(httpSwagger.Handler(
+		httpSwagger.URL(constants.ApiV1UrlRoot+"/swagger/doc.json"),
+		httpSwagger.DeepLinking(true),
+		httpSwagger.DocExpansion("none"),
+		httpSwagger.DomID("swagger-ui"),
+	))
 
 	server.initRoutes()
 
@@ -37,4 +58,5 @@ func (server *APIServer) initRoutes() {
 	handlers.InitUserRoutes(server.router)
 	handlers.InitAuthRoutes(server.router)
 	handlers.InitDiaryEntryRoutes(server.router)
+	handlers.InitActivityRegistrationRoutes(server.router)
 }
