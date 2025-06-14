@@ -14,6 +14,12 @@ const (
 	deleteActivityRegistrationQuery          = "DELETE FROM activity_registration WHERE id = ?;"
 )
 
+type ActivityRegistrationStorageInterface interface {
+	Create(data interface{}) error
+	Update(data interface{}) error
+	Delete(id uint) error
+}
+
 type ActivityRegistrationStorage struct{}
 
 var activityRegistrationNotFoundError = &models.DbNotFoundError{DbItem: &models.ActivityRegistration{}}

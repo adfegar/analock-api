@@ -18,6 +18,16 @@ const (
 	deleteExternalLoginQuery     = "DELETE FROM external_login WHERE id = ?;"
 )
 
+// ExternalLoginStorageInterface defines storage operations for external logins.
+type ExternalLoginStorageInterface interface {
+	Get(id uint) (interface{}, error)
+	GetByClientId(clientId string) (interface{}, error)
+	Create(data interface{}) error
+	Update(data interface{}) error
+	UpdateUserExternalLoginToken(data interface{}) error
+	Delete(id uint) error
+}
+
 type ExternalLoginStorage struct{}
 
 var externalLoginNotFoundError = &models.DbNotFoundError{DbItem: &models.ExternalLogin{}}

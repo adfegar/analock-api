@@ -112,7 +112,7 @@ func (externalLoginStorageMock *mockExternalLoginStorage) Delete(id uint) error 
 }
 
 // --- Test Cases ---
-var externalLoginService ExternalLoginService = &DefaultExternalLoginService{}
+var externalLoginService ExternalLoginService = &ExternalLoginServiceImpl{}
 
 func TestGetExternalLoginById(t *testing.T) {
 	originalExternalLoginStorage := externalLoginStorage

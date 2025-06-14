@@ -5,21 +5,12 @@ import (
 	"github.com/adfer-dev/analock-api/storage"
 )
 
-// UserStorageInterface defines storage operations for users.
-type UserStorageInterface interface {
-	Get(id uint) (interface{}, error)
-	GetByEmail(email string) (interface{}, error)
-	Create(data interface{}) error
-	Update(data interface{}) error
-	Delete(id uint) error
-}
-
 type UserBody struct {
 	Email    string `json:"email" validate:"required,email"`
 	UserName string `json:"username" validate:"required,alphanum"`
 }
 
-var userStorage UserStorageInterface = &storage.UserStorage{}
+var userStorage storage.UserStorageInterface = &storage.UserStorage{}
 
 // UserService defines all operations for the user service.
 type UserService interface {
@@ -30,10 +21,10 @@ type UserService interface {
 	DeleteUser(id uint) error
 }
 
-// DefaultUserService is the concrete implementation of UserService.
-type DefaultUserService struct{}
+// UserServiceImpl is the concrete implementation of UserService.
+type UserServiceImpl struct{}
 
-func (s *DefaultUserService) GetUserById(id uint) (*models.User, error) {
+func (userService *UserServiceImpl) GetUserById(id uint) (*models.User, error) {
 	user, err := userStorage.Get(id)
 	if err != nil {
 		return nil, err
@@ -41,7 +32,7 @@ func (s *DefaultUserService) GetUserById(id uint) (*models.User, error) {
 	return user.(*models.User), nil
 }
 
-func (s *DefaultUserService) GetUserByEmail(email string) (*models.User, error) {
+func (userService *UserServiceImpl) GetUserByEmail(email string) (*models.User, error) {
 	user, err := userStorage.GetByEmail(email)
 	if err != nil {
 		return nil, err
@@ -49,7 +40,7 @@ func (s *DefaultUserService) GetUserByEmail(email string) (*models.User, error) 
 	return user.(*models.User), nil
 }
 
-func (s *DefaultUserService) SaveUser(userBody UserBody) (*models.User, error) {
+func (userService *UserServiceImpl) SaveUser(userBody UserBody) (*models.User, error) {
 	savedUser := &models.User{
 		Email:    userBody.Email,
 		UserName: userBody.UserName,
@@ -62,7 +53,7 @@ func (s *DefaultUserService) SaveUser(userBody UserBody) (*models.User, error) {
 	return savedUser, nil
 }
 
-func (s *DefaultUserService) UpdateUser(userBody UserBody) (*models.User, error) {
+func (userService *UserServiceImpl) UpdateUser(userBody UserBody) (*models.User, error) {
 	updatedUser := &models.User{}
 	updatedUser.UserName = userBody.UserName
 	updatedUser.Email = userBody.Email
@@ -74,6 +65,6 @@ func (s *DefaultUserService) UpdateUser(userBody UserBody) (*models.User, error)
 	return updatedUser, nil
 }
 
-func (s *DefaultUserService) DeleteUser(id uint) error {
+func (userService *UserServiceImpl) DeleteUser(id uint) error {
 	return userStorage.Delete(id)
 }

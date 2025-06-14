@@ -16,6 +16,15 @@ const (
 	deleteUserQuery         = "DELETE FROM user WHERE id = ?;"
 )
 
+// UserStorageInterface defines storage operations for users.
+type UserStorageInterface interface {
+	Get(id uint) (interface{}, error)
+	GetByEmail(email string) (interface{}, error)
+	Create(data interface{}) error
+	Update(data interface{}) error
+	Delete(id uint) error
+}
+
 type UserStorage struct{}
 
 var userNotFoundError = &models.DbNotFoundError{DbItem: &models.User{}}

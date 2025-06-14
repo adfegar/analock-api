@@ -17,6 +17,16 @@ const (
 	deleteTokenQuery           = "DELETE FROM token WHERE id = ?;"
 )
 
+type TokenStorageInterface interface {
+	Get(id uint) (interface{}, error)
+	GetByValue(tokenValue string) (interface{}, error)
+	GetByUserAndKind(userId uint, kind models.TokenKind) (interface{}, error)
+	GetByUserId(userId uint) ([2]*models.Token, error)
+	Create(data interface{}) error
+	Update(data interface{}) error
+	Delete(id uint) error
+}
+
 type TokenStorage struct{}
 
 var tokenNotFoundError = &models.DbNotFoundError{DbItem: &models.Token{}}

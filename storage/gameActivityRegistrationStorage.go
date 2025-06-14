@@ -16,6 +16,12 @@ const (
 	deleteGameActivityRegistrationQuery             = "DELETE FROM activity_registration_game WHERE id = ?;"
 )
 
+type GameActivityRegistrationStorageInterface interface {
+	GetByUserId(userId uint) (interface{}, error)
+	GetByUserIdAndInterval(userId uint, startDate int64, endDate int64) (interface{}, error)
+	Create(data interface{}) error
+}
+
 type GameActivityRegistrationStorage struct{}
 
 var gameActivityRegistrationNotFoundError = &models.DbNotFoundError{DbItem: &models.GameActivityRegistration{}}

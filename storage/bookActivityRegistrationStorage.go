@@ -16,6 +16,12 @@ const (
 	deleteBookActivityRegistrationQuery           = "DELETE FROM activity_registration_book WHERE id = ?;"
 )
 
+type BookActivityRegistrationStorageInterface interface {
+	GetByUserId(userId uint) (interface{}, error)
+	GetByUserIdAndTimeRange(userId uint, startTime int64, endTime int64) (interface{}, error)
+	Create(data interface{}) error
+}
+
 type BookActivityRegistrationStorage struct{}
 
 var bookActivityRegistrationNotFoundError = &models.DbNotFoundError{DbItem: &models.BookActivityRegistration{}}

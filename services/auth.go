@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/adfer-dev/analock-api/auth"
+	"github.com/adfer-dev/analock-api/constants"
 	"github.com/adfer-dev/analock-api/models"
 )
 
@@ -58,29 +59,29 @@ type RefreshTokenResponse struct {
 }
 
 // AuthService methods
-func (s *AuthService) AuthenticateUser(authBody UserAuthenticateBody) (*models.Token, *models.Token, error) {
-	googleValidateErr := s.validateGoogleToken(authBody.ProviderToken)
+func (authService *AuthService) AuthenticateUser(authBody UserAuthenticateBody) (*models.Token, *models.Token, error) {
+	googleValidateErr := authService.validateGoogleToken(authBody.ProviderToken)
 	if googleValidateErr != nil {
 		return nil, nil, googleValidateErr
 	}
 
-	user, getUserErr := s.userService.GetUserByEmail(authBody.Email)
+	user, getUserErr := authService.userService.GetUserByEmail(authBody.Email)
 
 	if getUserErr == nil {
 		externalLogin := &UpdateExternalLoginBody{
 			ClientToken: authBody.ProviderToken,
 		}
-		_, saveExternalLoginError := s.extLoginService.UpdateUserExternalLoginToken(user.Id, externalLogin)
+		_, saveExternalLoginError := authService.extLoginService.UpdateUserExternalLoginToken(user.Id, externalLogin)
 		if saveExternalLoginError != nil {
 			return nil, nil, saveExternalLoginError
 		}
-		return s.updateTokenPair(user)
+		return authService.updateTokenPair(user)
 	} else {
 		userBody := UserBody{
 			Email:    authBody.Email,
 			UserName: authBody.UserName,
 		}
-		savedUser, saveUserError := s.userService.SaveUser(userBody)
+		savedUser, saveUserError := authService.userService.SaveUser(userBody)
 		if saveUserError != nil {
 			return nil, nil, saveUserError
 		}
@@ -91,22 +92,22 @@ func (s *AuthService) AuthenticateUser(authBody UserAuthenticateBody) (*models.T
 			UserRefer:   savedUser.Id,
 			Provider:    models.Google,
 		}
-		_, saveExternalLoginError := s.extLoginService.SaveExternalLogin(externalLogin)
+		_, saveExternalLoginError := authService.extLoginService.SaveExternalLogin(externalLogin)
 		if saveExternalLoginError != nil {
 			// Consider rolling back user creation or logging, for now, return error
 			return nil, nil, saveExternalLoginError
 		}
-		return s.generateAndSaveTokenPair(savedUser)
+		return authService.generateAndSaveTokenPair(savedUser)
 	}
 }
 
-func (s *AuthService) RefreshToken(request RefreshTokenRequest) (*RefreshTokenResponse, error) {
-	validationErr := s.AppTokenManager.ValidateToken(request.RefreshToken)
+func (authService *AuthService) RefreshToken(request RefreshTokenRequest) (*RefreshTokenResponse, error) {
+	validationErr := authService.AppTokenManager.ValidateToken(request.RefreshToken)
 	if validationErr != nil {
 		return nil, validationErr
 	}
 
-	claims, claimsErr := s.AppTokenManager.GetClaims(request.RefreshToken)
+	claims, claimsErr := authService.AppTokenManager.GetClaims(request.RefreshToken)
 	if claimsErr != nil {
 		return nil, claimsErr
 	}
@@ -116,17 +117,17 @@ func (s *AuthService) RefreshToken(request RefreshTokenRequest) (*RefreshTokenRe
 		return nil, errors.New("email claim is not a string or not found")
 	}
 
-	user, getUserErr := s.userService.GetUserByEmail(email)
+	user, getUserErr := authService.userService.GetUserByEmail(email)
 	if getUserErr != nil {
 		return nil, getUserErr
 	}
 
-	accessTokenString, accessTokenErr := s.AppTokenManager.GenerateToken(*user, models.Access)
+	accessTokenString, accessTokenErr := authService.AppTokenManager.GenerateToken(*user, models.Access)
 	if accessTokenErr != nil {
 		return nil, accessTokenErr
 	}
 
-	dbAccessToken, getDbAccessTokenErr := s.tokenService.GetUserTokenByKind(user.Id, models.Access)
+	dbAccessToken, getDbAccessTokenErr := authService.tokenService.GetUserTokenByKind(user.Id, models.Access)
 	if getDbAccessTokenErr != nil {
 		return nil, getDbAccessTokenErr
 	}
@@ -138,7 +139,7 @@ func (s *AuthService) RefreshToken(request RefreshTokenRequest) (*RefreshTokenRe
 		UserRefer:  user.Id,
 	}
 
-	_, saveAccessTokenErr := s.tokenService.UpdateToken(accessToken)
+	_, saveAccessTokenErr := authService.tokenService.UpdateToken(accessToken)
 	if saveAccessTokenErr != nil {
 		return nil, saveAccessTokenErr
 	}
@@ -146,8 +147,8 @@ func (s *AuthService) RefreshToken(request RefreshTokenRequest) (*RefreshTokenRe
 	return &RefreshTokenResponse{Token: accessToken.TokenValue}, nil
 }
 
-func (s *AuthService) generateAndSaveTokenPair(user *models.User) (accessToken *models.Token, refreshToken *models.Token, err error) {
-	accessTokenString, accessTokenErr := s.AppTokenManager.GenerateToken(*user, models.Access)
+func (authService *AuthService) generateAndSaveTokenPair(user *models.User) (accessToken *models.Token, refreshToken *models.Token, err error) {
+	accessTokenString, accessTokenErr := authService.AppTokenManager.GenerateToken(*user, models.Access)
 	if accessTokenErr != nil {
 		return nil, nil, accessTokenErr
 	}
@@ -157,7 +158,7 @@ func (s *AuthService) generateAndSaveTokenPair(user *models.User) (accessToken *
 		UserRefer:  user.Id,
 	}
 
-	refreshTokenString, refreshTokenErr := s.AppTokenManager.GenerateToken(*user, models.Refresh)
+	refreshTokenString, refreshTokenErr := authService.AppTokenManager.GenerateToken(*user, models.Refresh)
 	if refreshTokenErr != nil {
 		return nil, nil, refreshTokenErr
 	}
@@ -167,12 +168,12 @@ func (s *AuthService) generateAndSaveTokenPair(user *models.User) (accessToken *
 		UserRefer:  user.Id,
 	}
 
-	_, saveAccessTokenErr := s.tokenService.SaveToken(accessToken)
+	_, saveAccessTokenErr := authService.tokenService.SaveToken(accessToken)
 	if saveAccessTokenErr != nil {
 		return nil, nil, saveAccessTokenErr
 	}
 
-	_, saveRefreshTokenErr := s.tokenService.SaveToken(refreshToken)
+	_, saveRefreshTokenErr := authService.tokenService.SaveToken(refreshToken)
 	if saveRefreshTokenErr != nil {
 		// Consider cleanup for already saved access token
 		return nil, nil, saveRefreshTokenErr
@@ -180,18 +181,18 @@ func (s *AuthService) generateAndSaveTokenPair(user *models.User) (accessToken *
 	return accessToken, refreshToken, nil
 }
 
-func (s *AuthService) updateTokenPair(user *models.User) (accessToken *models.Token, refreshToken *models.Token, err error) {
-	tokenPair, getTokenPairErr := s.tokenService.GetUserTokenPair(user.Id)
+func (authService *AuthService) updateTokenPair(user *models.User) (accessToken *models.Token, refreshToken *models.Token, err error) {
+	tokenPair, getTokenPairErr := authService.tokenService.GetUserTokenPair(user.Id)
 	if getTokenPairErr != nil {
 		return nil, nil, getTokenPairErr
 	}
 
-	accessTokenString, accessTokenErr := s.AppTokenManager.GenerateToken(*user, models.Access)
+	accessTokenString, accessTokenErr := authService.AppTokenManager.GenerateToken(*user, models.Access)
 	if accessTokenErr != nil {
 		return nil, nil, accessTokenErr
 	}
 
-	refreshTokenString, refreshTokenErr := s.AppTokenManager.GenerateToken(*user, models.Refresh)
+	refreshTokenString, refreshTokenErr := authService.AppTokenManager.GenerateToken(*user, models.Refresh)
 	if refreshTokenErr != nil {
 		return nil, nil, refreshTokenErr
 	}
@@ -211,7 +212,7 @@ func (s *AuthService) updateTokenPair(user *models.User) (accessToken *models.To
 		}
 
 		if currentTokenToUpdate != nil {
-			_, updateErr := s.tokenService.UpdateToken(currentTokenToUpdate)
+			_, updateErr := authService.tokenService.UpdateToken(currentTokenToUpdate)
 			if updateErr != nil {
 				return nil, nil, updateErr // return early on first error
 			}
@@ -225,11 +226,11 @@ func (s *AuthService) updateTokenPair(user *models.User) (accessToken *models.To
 	return updatedAccess, updatedRefresh, nil
 }
 
-func (s *AuthService) validateGoogleToken(idToken string) error {
-	return s.googleValidator.Validate(idToken)
+func (authService *AuthService) validateGoogleToken(idToken string) error {
+	return authService.googleValidator.Validate(idToken)
 }
 
-// Interfaces and implementations for the AuthService
+// Interfaces and implementations for the GoogleTokenValidator
 
 // GoogleTokenValidator interface
 type GoogleTokenValidator interface {
@@ -237,20 +238,21 @@ type GoogleTokenValidator interface {
 }
 
 // Interface implementation for GoogleTokenValidator
-type DefaultGoogleTokenValidator struct {
+type GoogleTokenValidatorImpl struct {
 	Client           *http.Client
 	TokenInfoBaseURL string
 }
 
-// Constructor for DefaultGoogleTokenValidator
-func NewDefaultGoogleTokenValidator() *DefaultGoogleTokenValidator {
-	return &DefaultGoogleTokenValidator{
-		TokenInfoBaseURL: "https://www.googleapis.com/oauth2/v3/tokeninfo",
+// Constructor for GoogleTokenValidator implementation.
+// Sets TokenInfoBaseUrl to default Google token validation URL.
+func NewGoogleTokenValidatorImpl() *GoogleTokenValidatorImpl {
+	return &GoogleTokenValidatorImpl{
+		TokenInfoBaseURL: constants.ApiGoogleTokenValidationUrl,
 	}
 }
 
-// Validate the Google token
-func (d *DefaultGoogleTokenValidator) Validate(idToken string) error {
+// Validates the Google token
+func (d *GoogleTokenValidatorImpl) Validate(idToken string) error {
 	httpClient := d.Client
 	if httpClient == nil {
 		httpClient = http.DefaultClient

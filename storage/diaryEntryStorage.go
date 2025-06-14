@@ -16,6 +16,14 @@ const (
 	deleteDiaryEntryQuery            = "DELETE FROM diary_entry WHERE id = ?;"
 )
 
+type DiaryEntryStorageInterface interface {
+	Get(id uint) (interface{}, error)
+	GetByUserId(userId uint) (interface{}, error)
+	GetByUserIdAndDateInterval(userId uint, startDate int64, endDate int64) (interface{}, error)
+	Create(data interface{}) error
+	Update(data interface{}) error
+}
+
 type DiaryEntryStorage struct{}
 
 var diaryEntryNotFoundError = &models.DbNotFoundError{DbItem: &models.DiaryEntry{}}

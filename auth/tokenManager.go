@@ -16,26 +16,26 @@ type TokenManager interface {
 }
 
 // Interface implementation for TokenManager
-type DefaultTokenManager struct {
+type TokenManagerImpl struct {
 	secretKeyProvider func() ([]byte, error)
 }
 
-// Empty constructor for DefaultTokenManager. Uses default secret key provider.
-func NewDefaultTokenManager() *DefaultTokenManager {
-	return &DefaultTokenManager{secretKeyProvider: GetSecretKey}
+// Empty constructor for TokenManager implementation. Uses default secret key provider.
+func NewTokenManagerImpl() *TokenManagerImpl {
+	return &TokenManagerImpl{secretKeyProvider: GetSecretKey}
 }
 
 // Parametrized constructor for DefaultTokenManager
 // If the provided provider is nil, it defaults to using default secret key provider.
-func NewDefaultTokenManagerWithProvider(provider func() ([]byte, error)) *DefaultTokenManager {
+func NewDefaultTokenManagerWithProvider(provider func() ([]byte, error)) *TokenManagerImpl {
 	p := provider
 	if p == nil {
 		p = GetSecretKey
 	}
-	return &DefaultTokenManager{secretKeyProvider: p}
+	return &TokenManagerImpl{secretKeyProvider: p}
 }
 
-func (d *DefaultTokenManager) GenerateToken(user models.User, kind models.TokenKind) (string, error) {
+func (d *TokenManagerImpl) GenerateToken(user models.User, kind models.TokenKind) (string, error) {
 	secretKey, envErr := d.secretKeyProvider()
 
 	if envErr != nil {
@@ -63,7 +63,7 @@ func (d *DefaultTokenManager) GenerateToken(user models.User, kind models.TokenK
 	return tokenString, nil
 }
 
-func (d *DefaultTokenManager) ValidateToken(tokenString string) error {
+func (d *TokenManagerImpl) ValidateToken(tokenString string) error {
 	secretKey, envErr := d.secretKeyProvider()
 
 	if envErr != nil {
@@ -91,7 +91,7 @@ func (d *DefaultTokenManager) ValidateToken(tokenString string) error {
 	return nil
 }
 
-func (d *DefaultTokenManager) GetClaims(tokenString string) (jwt.MapClaims, error) {
+func (d *TokenManagerImpl) GetClaims(tokenString string) (jwt.MapClaims, error) {
 	secretKey, envErr := d.secretKeyProvider()
 
 	if envErr != nil {
