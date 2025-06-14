@@ -5,18 +5,13 @@ import (
 	"github.com/adfer-dev/analock-api/storage"
 )
 
-// TokenStorageInterface defines storage operations for tokens.
-type TokenStorageInterface interface {
-	Get(id uint) (interface{}, error)
-	GetByValue(tokenValue string) (interface{}, error)
-	GetByUserAndKind(userId uint, kind models.TokenKind) (interface{}, error)
-	GetByUserId(userId uint) ([2]*models.Token, error)
-	Create(data interface{}) error
-	Update(data interface{}) error
-	Delete(id uint) error
+type TokenBody struct {
+	TokenValue string           `json:"token" validate:"required,jwt"`
+	UserRefer  uint             `json:"user_id" validate:"required,number"`
+	Kind       models.TokenKind `json:"kind" validate:"required,number"`
 }
 
-var tokenStorage TokenStorageInterface = &storage.TokenStorage{}
+var tokenStorage storage.TokenStorageInterface = &storage.TokenStorage{}
 
 // TokenService defines all operations for the token service.
 type TokenService interface {
@@ -29,15 +24,15 @@ type TokenService interface {
 	DeleteToken(id uint) error
 }
 
-// DefaultTokenService is the concrete implementation of TokenService.
-type DefaultTokenService struct{}
+// TokenServiceImpl is the concrete implementation of TokenService.
+type TokenServiceImpl struct{}
 
-// NewDefaultTokenService creates a new DefaultTokenService.
-func NewDefaultTokenService() *DefaultTokenService {
-	return &DefaultTokenService{}
+// NewTokenServiceImpl creates a new DefaultTokenService.
+func NewTokenServiceImpl() *TokenServiceImpl {
+	return &TokenServiceImpl{}
 }
 
-func (s *DefaultTokenService) GetTokenById(id uint) (*models.Token, error) {
+func (tokenService *TokenServiceImpl) GetTokenById(id uint) (*models.Token, error) {
 	token, err := tokenStorage.Get(id)
 	if err != nil {
 		return nil, err
@@ -45,7 +40,7 @@ func (s *DefaultTokenService) GetTokenById(id uint) (*models.Token, error) {
 	return token.(*models.Token), nil
 }
 
-func (s *DefaultTokenService) GetTokenByValue(tokenValue string) (*models.Token, error) {
+func (tokenService *TokenServiceImpl) GetTokenByValue(tokenValue string) (*models.Token, error) {
 	token, err := tokenStorage.GetByValue(tokenValue)
 	if err != nil {
 		return nil, err
@@ -53,7 +48,7 @@ func (s *DefaultTokenService) GetTokenByValue(tokenValue string) (*models.Token,
 	return token.(*models.Token), nil
 }
 
-func (s *DefaultTokenService) GetUserTokenByKind(userId uint, kind models.TokenKind) (*models.Token, error) {
+func (tokenService *TokenServiceImpl) GetUserTokenByKind(userId uint, kind models.TokenKind) (*models.Token, error) {
 	token, err := tokenStorage.GetByUserAndKind(userId, kind)
 	if err != nil {
 		return nil, err
@@ -61,7 +56,7 @@ func (s *DefaultTokenService) GetUserTokenByKind(userId uint, kind models.TokenK
 	return token.(*models.Token), nil
 }
 
-func (s *DefaultTokenService) GetUserTokenPair(userId uint) ([2]*models.Token, error) {
+func (tokenService *TokenServiceImpl) GetUserTokenPair(userId uint) ([2]*models.Token, error) {
 	tokenPair, err := tokenStorage.GetByUserId(userId)
 	if err != nil {
 		return [2]*models.Token{}, err
@@ -69,7 +64,7 @@ func (s *DefaultTokenService) GetUserTokenPair(userId uint) ([2]*models.Token, e
 	return tokenPair, nil
 }
 
-func (s *DefaultTokenService) SaveToken(tokenBody *models.Token) (*models.Token, error) {
+func (tokenService *TokenServiceImpl) SaveToken(tokenBody *models.Token) (*models.Token, error) {
 	err := tokenStorage.Create(tokenBody)
 	if err != nil {
 		return nil, err
@@ -77,7 +72,7 @@ func (s *DefaultTokenService) SaveToken(tokenBody *models.Token) (*models.Token,
 	return tokenBody, nil
 }
 
-func (s *DefaultTokenService) UpdateToken(tokenBody *models.Token) (*models.Token, error) {
+func (tokenService *TokenServiceImpl) UpdateToken(tokenBody *models.Token) (*models.Token, error) {
 	err := tokenStorage.Update(tokenBody)
 	if err != nil {
 		return nil, err
@@ -85,24 +80,6 @@ func (s *DefaultTokenService) UpdateToken(tokenBody *models.Token) (*models.Toke
 	return tokenBody, nil
 }
 
-func (s *DefaultTokenService) DeleteToken(id uint) error {
+func (tokenService *TokenServiceImpl) DeleteToken(id uint) error {
 	return tokenStorage.Delete(id)
-}
-
-// --- Original Package-Level Functions (Logic moved to DefaultTokenService methods) ---
-
-// func GetTokenById(id uint) (*models.Token, error) { ... }
-// func GetTokenByValue(tokenValue string) (*models.Token, error) { ... }
-// func GetUserTokenByKind(userId uint, kind models.TokenKind) (*models.Token, error) { ... }
-// func GetUserTokenPair(userId uint) ([2]*models.Token, error) { ... }
-// func SaveToken(tokenBody *models.Token) (*models.Token, error) { ... }
-// func UpdateToken(tokenBody *models.Token) (*models.Token, error) { ... }
-// func DeleteToken(id uint) error { ... }
-
-// --- Request/Response Bodies ---
-
-type TokenBody struct {
-	TokenValue string           `json:"token" validate:"required,jwt"`
-	UserRefer  uint             `json:"user_id" validate:"required,number"`
-	Kind       models.TokenKind `json:"kind" validate:"required,number"`
 }

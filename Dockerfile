@@ -16,7 +16,6 @@ WORKDIR /app
 
 COPY . .
 
-# Create .env file
 RUN echo "TURSO_DB_URL=$DB_URL" > .env && \
     echo "TURSO_DB_TOKEN=$DB_TOKEN" >> .env \
     echo "API_ENVIRONMENT=production" >> .env \

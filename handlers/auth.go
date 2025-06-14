@@ -18,23 +18,23 @@ func InitAuthRoutes(router *mux.Router) {
 }
 
 var authService *services.AuthService = services.NewAuthService(
-	&services.DefaultGoogleTokenValidator{},
-	auth.NewDefaultTokenManager(),
-	&services.DefaultUserService{},
-	&services.DefaultTokenService{},
-	&services.DefaultExternalLoginService{},
+	services.NewGoogleTokenValidatorImpl(),
+	auth.NewTokenManagerImpl(),
+	&services.UserServiceImpl{},
+	&services.TokenServiceImpl{},
+	&services.ExternalLoginServiceImpl{},
 )
 
-//	@Summary		Authenticate user
-//	@Description	Authenticates a user and returns access and refresh tokens
-//	@Tags			auth
-//	@Accept			json
-//	@Produce		json
-//	@Param			body	body		services.UserAuthenticateBody	true	"Authentication request"
-//	@Success		200		{object}	services.TokenResponse
-//	@Failure		400		{object}	models.HttpError
-//	@Failure		500		{object}	models.HttpError
-//	@Router			/auth/authenticate [post]
+// @Summary		Authenticate user
+// @Description	Authenticates a user and returns access and refresh tokens
+// @Tags			auth
+// @Accept			json
+// @Produce		json
+// @Param			body	body		services.UserAuthenticateBody	true	"Authentication request"
+// @Success		200		{object}	services.TokenResponse
+// @Failure		400		{object}	models.HttpError
+// @Failure		500		{object}	models.HttpError
+// @Router			/auth/authenticate [post]
 func handleAuthenticateUser(res http.ResponseWriter, req *http.Request) error {
 	authenticateBody := services.UserAuthenticateBody{}
 
@@ -60,15 +60,15 @@ func handleAuthenticateUser(res http.ResponseWriter, req *http.Request) error {
 		services.TokenResponse{AccessToken: accessToken.TokenValue, RefreshToken: refreshToken.TokenValue})
 }
 
-//	@Summary		Refresh access token
-//	@Description	Refreshes the access token using a refresh token
-//	@Tags			auth
-//	@Accept			json
-//	@Produce		json
-//	@Param			body	body		services.RefreshTokenRequest	true	"Refresh token request"
-//	@Success		200		{object}	services.TokenResponse
-//	@Failure		403		{object}	models.HttpError
-//	@Router			/auth/refreshToken [post]
+// @Summary		Refresh access token
+// @Description	Refreshes the access token using a refresh token
+// @Tags			auth
+// @Accept			json
+// @Produce		json
+// @Param			body	body		services.RefreshTokenRequest	true	"Refresh token request"
+// @Success		200		{object}	services.TokenResponse
+// @Failure		403		{object}	models.HttpError
+// @Router			/auth/refreshToken [post]
 func handleRefreshToken(res http.ResponseWriter, req *http.Request) error {
 	authenticateBody := services.RefreshTokenRequest{}
 

@@ -12,8 +12,8 @@ import (
 	"github.com/gorilla/mux"
 )
 
-var bookRegistrationService services.BookActivityRegistrationService = &services.DefaultBookActivityRegistrationService{}
-var gameRegistrationService services.GameActivityRegistrationService = &services.DefaultGameActivityRegistrationService{}
+var bookRegistrationService services.BookActivityRegistrationService = &services.BookActivityRegistrationServiceImpl{}
+var gameRegistrationService services.GameActivityRegistrationService = &services.GameActivityRegistrationServiceImpl{}
 
 func InitActivityRegistrationRoutes(router *mux.Router) {
 	router.HandleFunc("/api/v1/activityRegistrations/books/user/{id:[0-9]+}", utils.ParseToHandlerFunc(handleGetUserBookActivityRegistrations)).Methods("GET")

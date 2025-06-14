@@ -16,9 +16,9 @@ import (
 	"github.com/gorilla/mux"
 )
 
-var tokenService services.TokenService = &services.DefaultTokenService{}
-var userService services.UserService = &services.DefaultUserService{}
-var tokenManager auth.TokenManager = auth.NewDefaultTokenManager()
+var tokenService services.TokenService = &services.TokenServiceImpl{}
+var userService services.UserService = &services.UserServiceImpl{}
+var tokenManager auth.TokenManager = auth.NewTokenManagerImpl()
 var diaryEntryService services.DiaryEntryService = &services.DefaultDiaryEntryService{}
 
 // AuthMiddleware is a middleware to check if each request is correctly authorized.

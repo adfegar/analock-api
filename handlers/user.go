@@ -14,7 +14,7 @@ func InitUserRoutes(router *mux.Router) {
 	router.HandleFunc("/api/v1/users/{email}", utils.ParseToHandlerFunc(handleGetUserByEmail)).Methods("GET")
 }
 
-var userService services.UserService = &services.DefaultUserService{}
+var userService services.UserService = &services.UserServiceImpl{}
 
 // @Summary		Get user by ID
 // @Description	Get user information by their ID

@@ -143,8 +143,8 @@ func (m *mockActivityRegistrationStorage) Delete(id uint) error {
 	return nil
 }
 
-var bookRegistrationService BookActivityRegistrationService = &DefaultBookActivityRegistrationService{}
-var gameRegistrationService GameActivityRegistrationService = &DefaultGameActivityRegistrationService{}
+var bookRegistrationService BookActivityRegistrationService = &BookActivityRegistrationServiceImpl{}
+var gameRegistrationService GameActivityRegistrationService = &GameActivityRegistrationServiceImpl{}
 
 func TestGetUserBookActivityRegistrations(t *testing.T) {
 	originalBookStorage := bookActivityRegistrationStorage

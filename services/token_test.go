@@ -136,7 +136,7 @@ func getTokenStorageKey(userId uint, kind models.TokenKind) string {
 }
 
 // --- Test Cases ---
-var tokenService TokenService = &DefaultTokenService{}
+var tokenService TokenService = &TokenServiceImpl{}
 
 func TestGetTokenById(t *testing.T) {
 	originalTS := tokenStorage

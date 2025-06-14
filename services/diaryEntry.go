@@ -5,18 +5,6 @@ import (
 	"github.com/adfer-dev/analock-api/storage"
 )
 
-// Interface for DiaryEntryStorage
-type DiaryEntryStorageInterface interface {
-	Get(id uint) (interface{}, error)
-	GetByUserId(userId uint) (interface{}, error)
-	GetByUserIdAndDateInterval(userId uint, startDate int64, endDate int64) (interface{}, error)
-	Create(data interface{}) error
-	Update(data interface{}) error
-}
-
-// ActivityRegistrationStorageInterface is defined in activityRegistration.go
-// and is accessible throughout the 'services' package.
-
 type SaveDiaryEntryBody struct {
 	Title       string `json:"title" validate:"required"`
 	Content     string `json:"content" validate:"required"`
@@ -24,14 +12,13 @@ type SaveDiaryEntryBody struct {
 	UserRefer   uint   `json:"userId" validate:"required"`
 }
 
-// Added back UpdateDiaryEntryBody
 type UpdateDiaryEntryBody struct {
 	Title       string `json:"title" validate:"required"`
 	Content     string `json:"content" validate:"required"`
 	PublishDate int64  `json:"publishDate" validate:"required"`
 }
 
-var diaryEntryStorage DiaryEntryStorageInterface = &storage.DiaryEntryStorage{}
+var diaryEntryStorage storage.DiaryEntryStorageInterface = &storage.DiaryEntryStorage{}
 
 type DiaryEntryService interface {
 	GetDiaryEntryById(id uint) (*models.DiaryEntry, error)

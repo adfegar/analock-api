@@ -9,6 +9,7 @@ const ApiUrlDiaryEntries = "/diaryEntries"
 const ApiUrlUserDiaryEntries = "/diaryEntries/user"
 const ApiUrlBookRegistrations = "/activityRegistrations/books"
 const ApiUrlGameRegistrations = "/activityRegistrations/games"
+const ApiGoogleTokenValidationUrl = "https://www.googleapis.com/oauth2/v3/tokeninfo"
 
 // TEST CONSTANTS
 const TestAccessTokenValue = "mock_access_jwt_from_manager_v_agnostic"

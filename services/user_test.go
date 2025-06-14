@@ -119,7 +119,7 @@ func (m *userStorageMockUserStorage) Delete(id uint) error {
 	return nil
 }
 
-var userService UserService = &DefaultUserService{}
+var userService UserService = &UserServiceImpl{}
 
 func TestGetUserById(t *testing.T) {
 	originalStorage := userStorage

@@ -246,7 +246,7 @@ func TestAuthenticateUser_ExistingUser(t *testing.T) {
 	}))
 	defer mockGoogleServer.Close()
 
-	googleVal := NewDefaultGoogleTokenValidator()
+	googleVal := NewGoogleTokenValidatorImpl()
 	googleVal.Client = mockGoogleServer.Client()
 	googleVal.TokenInfoBaseURL = mockGoogleServer.URL
 
@@ -315,7 +315,7 @@ func TestAuthenticateUser_GoogleTokenInvalid(t *testing.T) {
 	}))
 	defer mockGoogleServer.Close()
 
-	googleVal := NewDefaultGoogleTokenValidator()
+	googleVal := NewGoogleTokenValidatorImpl()
 	googleVal.Client = mockGoogleServer.Client()
 	googleVal.TokenInfoBaseURL = mockGoogleServer.URL
 
