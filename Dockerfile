@@ -1,4 +1,4 @@
-FROM golang:bookworm
+FROM golang:1.23
 
 ARG DB_URL
 ARG DB_TOKEN
