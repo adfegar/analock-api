@@ -64,4 +64,4 @@ jobs:
           github_token: "${{ secrets.GITHUB_TOKEN }}"
 
       - name: Deploy to Koyeb
-        run: koyeb service redeploy analock-api/successive-deanna
+        run: koyeb service redeploy successive-deanna/analock-api
